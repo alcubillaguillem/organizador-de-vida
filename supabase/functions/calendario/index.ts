@@ -1,8 +1,8 @@
 // Función "calendario": devuelve los eventos de Google Calendar de un rango de fechas.
-// Lee el enlace iCal secreto (CALENDARIO_ICAL_URL) y solo responde a su dueño (CALENDARIO_USER_ID).
+// Lee los enlaces iCal secretos (CALENDARIO_ICAL_URL, separados por espacios) y solo responde a su dueño (CALENDARIO_USER_ID).
 import ICAL from "npm:ical.js@2.1.0";
 import { createClient } from "npm:@supabase/supabase-js@2.117.3";
-import { eventosEntre } from "./eventos.js";
+import { eventosEntre, ordenar } from "./eventos.js";
 
 const cors = {
   "Access-Control-Allow-Origin": "https://alcubillaguillem.github.io",
@@ -26,10 +26,16 @@ Deno.serve(async (req) => {
   const dias = (fin.getTime() - ini.getTime()) / 86400000;
   if (!(dias > 0 && dias <= 8)) return json({ error: "rango no válido" }, 400);
 
-  const url = Deno.env.get("CALENDARIO_ICAL_URL") ?? "";
-  if (!url.startsWith("https://calendar.google.com/")) return json({ error: "calendario no configurado" }, 500);
-  const res = await fetch(url);
-  if (!res.ok) return json({ error: "no se pudo leer el calendario" }, 502);
-
-  return json({ eventos: eventosEntre(ICAL, await res.text(), ini, fin) });
+  const urls = (Deno.env.get("CALENDARIO_ICAL_URL") ?? "").split(/[\s,]+/).filter(Boolean);
+  if (!urls.length || !urls.every((u) => u.startsWith("https://calendar.google.com/"))) {
+    return json({ error: "calendario no configurado" }, 500);
+  }
+  // Si un calendario falla, se muestran los demás.
+  const listas = await Promise.all(urls.slice(0, 20).map(async (u) => {
+    try {
+      const res = await fetch(u);
+      return res.ok ? eventosEntre(ICAL, await res.text(), ini, fin) : [];
+    } catch { return []; }
+  }));
+  return json({ eventos: ordenar(listas.flat()) });
 });

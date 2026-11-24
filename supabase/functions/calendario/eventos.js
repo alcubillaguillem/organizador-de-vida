@@ -3,6 +3,7 @@
 // Recibe ICAL (la librería ical.js) como parámetro para poder probarlo fuera de Supabase.
 export function eventosEntre(ICAL, ics, ini, fin) {
   const cal = new ICAL.Component(ICAL.parse(ics));
+  const calendario = String(cal.getFirstPropertyValue("x-wr-calname") ?? "").slice(0, 60);
   for (const tz of cal.getAllSubcomponents("vtimezone")) ICAL.TimezoneService.register(tz);
 
   const vevents = cal.getAllSubcomponents("vevent");
@@ -12,8 +13,8 @@ export function eventosEntre(ICAL, ics, ini, fin) {
     const s = inicio.toJSDate(), e = final.toJSDate();
     if (e > ini && s < fin) {
       eventos.push(inicio.isDate
-        ? { titulo, dia: inicio.toString() }
-        : { titulo, inicio: s.toISOString(), fin: e.toISOString() });
+        ? { titulo, calendario, dia: inicio.toString() }
+        : { titulo, calendario, inicio: s.toISOString(), fin: e.toISOString() });
     }
   };
 
@@ -29,7 +30,9 @@ export function eventosEntre(ICAL, ics, ini, fin) {
       if (o.item.component.getFirstPropertyValue("status") !== "CANCELLED") anadir(o.item.summary, o.startDate, o.endDate);
     }
   }
-  return eventos
-    .map((e) => ({ ...e, titulo: String(e.titulo ?? "(sin título)").slice(0, 200) }))
-    .sort((a, b) => (a.dia ? 0 : 1) - (b.dia ? 0 : 1) || (a.inicio ?? "").localeCompare(b.inicio ?? ""));
+  return eventos.map((e) => ({ ...e, titulo: String(e.titulo ?? "(sin título)").slice(0, 200) }));
 }
+
+/** Ordena: primero los de todo el día, luego por hora de inicio. */
+export const ordenar = (eventos) =>
+  eventos.sort((a, b) => (a.dia ? 0 : 1) - (b.dia ? 0 : 1) || (a.inicio ?? "").localeCompare(b.inicio ?? ""));

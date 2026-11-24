@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
-import { eventosEntre } from "../supabase/functions/calendario/eventos.js";
+import { eventosEntre, ordenar } from "../supabase/functions/calendario/eventos.js";
 
 // ical.js es dependencia de desarrollo: `npm install` antes de `npm test`.
 let ICAL;
@@ -9,6 +9,7 @@ try { ICAL = createRequire(import.meta.url)("ical.js"); } catch { ICAL = null; }
 
 const ICS = `BEGIN:VCALENDAR
 VERSION:2.0
+X-WR-CALNAME:Clases
 BEGIN:VTIMEZONE
 TZID:Europe/Sofia
 BEGIN:STANDARD
@@ -54,15 +55,15 @@ END:VCALENDAR`.replace(/\n/g, "\r\n");
 
 test("eventos de un día: recurrentes, todo el día y zona horaria", { skip: !ICAL }, () => {
   const ini = new Date("2026-11-23T22:00:00Z"), fin = new Date("2026-11-24T22:00:00Z"); // 24 nov en Sofía
-  assert.deepEqual(eventosEntre(ICAL, ICS, ini, fin), [
-    { titulo: "Cumpleaños de Ana", dia: "2026-11-24" },
-    { titulo: "Clase de redes", inicio: "2026-11-24T07:00:00.000Z", fin: "2026-11-24T08:30:00.000Z" },
+  assert.deepEqual(ordenar(eventosEntre(ICAL, ICS, ini, fin)), [
+    { titulo: "Cumpleaños de Ana", calendario: "Clases", dia: "2026-11-24" },
+    { titulo: "Clase de redes", calendario: "Clases", inicio: "2026-11-24T07:00:00.000Z", fin: "2026-11-24T08:30:00.000Z" },
   ]);
 });
 
 test("una excepción de la serie cambia hora y título", { skip: !ICAL }, () => {
   const ini = new Date("2026-11-16T22:00:00Z"), fin = new Date("2026-11-17T22:00:00Z");
   assert.deepEqual(eventosEntre(ICAL, ICS, ini, fin), [
-    { titulo: "Clase de redes (aula 2)", inicio: "2026-11-17T09:00:00.000Z", fin: "2026-11-17T10:00:00.000Z" },
+    { titulo: "Clase de redes (aula 2)", calendario: "Clases", inicio: "2026-11-17T09:00:00.000Z", fin: "2026-11-17T10:00:00.000Z" },
   ]);
 });
