@@ -127,49 +127,120 @@ function aviso(texto) {
   avisoTimer = setTimeout(() => t.classList.add("hidden"), 2500);
 }
 
-function cambiarFrecuencia(h) {
-  const r = prompt(`¿Cuántas veces por semana quieres hacer «${h.nombre}»? (1 a 7; 7 = cada día)`, h.meta ?? 7);
-  if (r === null) return;
-  const n = Number(r);
-  if (!Number.isInteger(n) || n < 1 || n > 7) return aviso("Pon un número del 1 al 7.");
-  h.meta = n;
+const SVG = "http://www.w3.org/2000/svg";
+const svg = (tag, attrs = {}) => {
+  const n = document.createElementNS(SVG, tag);
+  for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v);
+  return n;
+};
+const CHECK = "m5 12.5 4.5 4.5L19 7.5";
+
+/** Marca o desmarca un día de un hábito. */
+function alternar(h, k, hoy) {
+  const antes = hechosSemana(h.dias, hoy);
+  h.dias = h.dias.includes(k) ? h.dias.filter((d) => d !== k) : [...h.dias, k];
   guardar(h);
+  if (!esDiario(h) && antes < h.meta && hechosSemana(h.dias, hoy) >= h.meta) aviso(`¡${h.nombre}: semana cumplida!`);
+}
+
+/** Crea (h = null) o edita un hábito desde la hoja. */
+function guardarHabito(h, nombre, meta) {
+  if (!h) {
+    h = { id: crypto.randomUUID(), nombre, creado: clave(new Date()), dias: [] };
+    habitos.push(h);
+  }
+  h.nombre = nombre;
+  if (meta < 7) h.meta = meta; else delete h.meta;
+  guardar(h);
+}
+function borrarHabito(h) {
+  habitos = habitos.filter((x) => x !== h);
+  guardar(h, true);
+}
+
+function pintarAnillo(hechos, total) {
+  const f = total ? hechos / total : 0;
+  const r = 15.9155; // circunferencia 100
+  const arco = svg("circle", { cx: 18, cy: 18, r, class: "an-arco", "stroke-dasharray": `${f * 100} 100`, pathLength: 100 });
+  const s = svg("svg", { viewBox: "0 0 36 36", "aria-hidden": "true" });
+  s.append(svg("circle", { cx: 18, cy: 18, r, class: "an-fondo" }), arco);
+  $("#hab-anillo").replaceChildren(s, el("span", { textContent: total ? `${hechos}/${total}` : "—" }));
+  $("#hab-anillo").classList.toggle("lleno", total > 0 && hechos === total);
+  $("#hab-anillo").setAttribute("aria-label", `${hechos} de ${total} hábitos hechos hoy`);
 }
 
 function pintarLista(hoy) {
-  const semana = ultimosDias(7, hoy);
-  $("#semana").replaceChildren(el("span"), ...semana.map((k) => el("span", { textContent: LETRAS[desdeClave(k).getDay()] })), el("span"));
-  $("#semana").classList.toggle("hidden", !habitos.length);
+  const k = clave(hoy), previos = ultimosDias(7, hoy).slice(0, 6);
+  const hechos = habitos.filter((h) => h.dias.includes(k)).length;
+  pintarAnillo(hechos, habitos.length);
+  $("#hab-sub").textContent = !habitos.length ? "Toca + para añadir tu primer hábito"
+    : hechos === habitos.length ? "¡Todo hecho hoy!" : `Te ${habitos.length - hechos === 1 ? "queda" : "quedan"} ${habitos.length - hechos} para hoy`;
 
-  $("#lista").replaceChildren(...(habitos.length ? habitos.map((h) => el("li", { className: "item" },
-    (() => {
-      const b = el("button", { type: "button", className: "name", title: "Cambiar frecuencia", textContent: `${emojiDe(h.nombre)} ${h.nombre}` },
-        el("small", { className: !esDiario(h) && hechosSemana(h.dias, hoy) >= h.meta ? "ok" : "", textContent: detalle(h, hoy) }));
-      b.addEventListener("click", () => cambiarFrecuencia(h));
+  $("#lista").replaceChildren(...(habitos.length ? habitos.map((h) => {
+    const hecho = h.dias.includes(k);
+    const info = el("button", { type: "button", className: "hab-info", ariaLabel: `Editar ${h.nombre}` },
+      el("span", { className: "hab-emoji", textContent: emojiDe(h.nombre) }),
+      el("span", { className: "hab-txt" },
+        el("strong", { textContent: h.nombre }),
+        el("small", { className: !esDiario(h) && hechosSemana(h.dias, hoy) >= h.meta ? "ok" : "", textContent: detalle(h, hoy) })));
+    info.addEventListener("click", () => calendario.abrirHoja({ tipo: "habito", habito: h }));
+    const dias = el("div", { className: "hab-dias" }, ...previos.map((d) => {
+      const b = el("button", { type: "button", textContent: LETRAS[desdeClave(d).getDay()], disabled: d < h.creado, ariaLabel: `${h.nombre}, ${fechaCorta(d)}` });
+      b.setAttribute("aria-pressed", String(h.dias.includes(d)));
+      b.addEventListener("click", () => alternar(h, d, hoy));
       return b;
-    })(),
-    ...semana.map((k) => {
-      const b = el("button", {
-        type: "button", className: k === clave(hoy) ? "dot today" : "dot",
-        disabled: k < h.creado, title: k, ariaLabel: `${h.nombre}, ${k}`,
-      });
-      b.setAttribute("aria-pressed", String(h.dias.includes(k)));
-      b.addEventListener("click", () => {
-        const antes = hechosSemana(h.dias, hoy);
-        h.dias = h.dias.includes(k) ? h.dias.filter((d) => d !== k) : [...h.dias, k];
-        guardar(h);
-        if (!esDiario(h) && antes < h.meta && hechosSemana(h.dias, hoy) >= h.meta) aviso(`¡${h.nombre}: semana cumplida!`);
-      });
-      return b;
-    }),
-    (() => {
-      const b = el("button", { type: "button", className: "del", ariaLabel: `Borrar ${h.nombre}` }, icono("M6 6l12 12M18 6 6 18"));
-      b.addEventListener("click", () => {
-        if (confirm(`¿Borrar «${h.nombre}» y todo su historial?`)) { habitos = habitos.filter((x) => x !== h); guardar(h, true); }
-      });
-      return b;
-    })(),
-  )) : [el("li", { className: "empty", textContent: "Añade tu primer hábito." })]));
+    }));
+    const check = el("button", { type: "button", className: "hab-check", ariaLabel: `${h.nombre}: hecho hoy` });
+    check.append(icono(CHECK));
+    check.setAttribute("aria-pressed", String(hecho));
+    check.addEventListener("click", () => { alternar(h, k, hoy); requestAnimationFrame(() => animarCheck(h.id)); });
+    const li = el("li", { className: hecho ? "hab-fila hecho" : "hab-fila" }, info, dias, check);
+    li.dataset.id = h.id;
+    return li;
+  }) : [el("li", { className: "empty", textContent: "Aún no tienes hábitos." })]));
+}
+const animarCheck = (id) => {
+  const b = document.querySelector(`#lista [data-id="${CSS.escape(id)}"] .hab-check`);
+  if (!b || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  b.classList.remove("pop");
+  void b.offsetWidth;
+  b.classList.add("pop");
+};
+
+/** Barras de los últimos 30 días: % de hábitos diarios cumplidos. Tocar una barra muestra su dato. */
+function pintarGrafico(hoy) {
+  const dias = ultimosDias(30, hoy);
+  const info = $("#graf-info");
+  const tasas = dias.map((k) => tasaDia(habitos, k));
+  const conDato = tasas.filter((t) => t != null);
+  const resumen = conDato.length ? `Media: ${pct(conDato.reduce((a, b) => a + b, 0) / conDato.length)}` : "Sin datos todavía";
+  info.textContent = resumen;
+  const barras = dias.map((k, i) => {
+    const t = tasas[i];
+    const b = el("button", { type: "button", className: t == null ? "bar vacia" : "bar", ariaLabel: `${fechaCorta(k)}: ${pct(t)}` });
+    b.style.setProperty("--h", t == null ? "0" : String(Math.max(t, 0.03)));
+    const ver = () => {
+      for (const x of $("#grafico .barras-g").children) x.classList.toggle("sel", x === b);
+      info.textContent = `${fechaCorta(k)} · ${t == null ? "sin hábitos" : pct(t)}`;
+    };
+    b.addEventListener("pointerenter", ver);
+    b.addEventListener("click", ver);
+    b.addEventListener("focus", ver);
+    return b;
+  });
+  const zona = el("div", { className: "barras-g" }, ...barras);
+  zona.addEventListener("pointerleave", (e) => {
+    if (e.pointerType !== "mouse") return;
+    for (const x of zona.children) x.classList.remove("sel");
+    info.textContent = resumen;
+  });
+  $("#grafico").replaceChildren(
+    el("div", { className: "g-ejes", ariaHidden: "true" }, ...["100 %", "50 %", "0 %"].map((t) => el("span", { textContent: t }))),
+    el("div", { className: "g-area" },
+      el("div", { className: "g-rejilla", ariaHidden: "true" }, el("i"), el("i"), el("i")),
+      zona,
+      el("div", { className: "g-fechas", ariaHidden: "true" },
+        ...[dias[0], dias[15]].map((d) => el("span", { textContent: desdeClave(d).toLocaleDateString("es-ES", { day: "numeric", month: "short" }) })), el("span", { textContent: "Hoy" }))));
 }
 
 function pintarDashboard(hoy) {
@@ -180,6 +251,7 @@ function pintarDashboard(hoy) {
   const semanales = habitos.filter((h) => !esDiario(h));
   $("#k-sem").textContent = semanales.length
     ? `${semanales.filter((h) => hechosSemana(h.dias, hoy) >= h.meta).length} de ${semanales.length}` : "—";
+  pintarGrafico(hoy);
 
   // 12 semanas completas de lunes a domingo; los días futuros quedan vacíos.
   const lunes = sumarDias(hoy, -((hoy.getDay() + 6) % 7) - 77);
@@ -189,12 +261,19 @@ function pintarDashboard(hoy) {
     return el("span", { className: dia > k ? "fut" : t ? `l${Math.ceil(t * 4)}` : "", title: `${dia}: ${pct(t)}` });
   }));
 
-  $("#tabla").replaceChildren(...habitos.map((h) => el("tr", {},
-    el("td", {}, `${emojiDe(h.nombre)} ${h.nombre}`, el("small", { textContent: frecuencia(h) })),
-    el("td", { textContent: `${racha(h, hoy)} ${esDiario(h) ? "d" : "sem"}` }),
-    el("td", { textContent: `${mejor(h)} ${esDiario(h) ? "d" : "sem"}` }),
-    el("td", { textContent: pct(tasaSemanal(h, hoy)) }),
-  )));
+  $("#tabla").replaceChildren(...habitos.map((h) => {
+    const u = esDiario(h) ? "d" : "sem", t = tasaSemanal(h, hoy);
+    const barra = el("div", { className: "r-barra", ariaHidden: "true" }, el("i"));
+    barra.firstChild.style.setProperty("--p", String(t));
+    return el("li", {},
+      el("div", { className: "r-fila" },
+        el("span", { className: "r-nombre", textContent: `${emojiDe(h.nombre)} ${h.nombre}` }),
+        el("span", { className: "r-num", textContent: `🔥 ${racha(h, hoy)} ${u}` })),
+      barra,
+      el("div", { className: "r-pie" },
+        el("span", { textContent: `${frecuencia(h)} · esta semana ${pct(t)}` }),
+        el("span", { textContent: `Mejor: ${mejor(h)} ${u}` })));
+  }));
 }
 
 // Google Calendar, a través de la función "calendario" de Supabase (slug quick-handler) y tu Apps Script.
@@ -289,21 +368,14 @@ let calendario = null;
 
 document.addEventListener("DOMContentLoaded", () => {
   for (const b of document.querySelectorAll("[data-view]")) b.addEventListener("click", () => mostrar(b.dataset.view));
-  $("#nuevo").addEventListener("submit", (e) => {
-    e.preventDefault();
-    const nombre = $("#nuevo-nombre").value.trim().slice(0, 60);
-    if (!nombre) return;
-    const meta = Number($("#nuevo-meta").value);
-    const h = { id: crypto.randomUUID(), nombre, creado: clave(new Date()), dias: [], ...(meta < 7 && { meta }) };
-    habitos.push(h);
-    $("#nuevo-nombre").value = "";
-    guardar(h);
-  });
+  $("#hab-nuevo").addEventListener("click", () => calendario.abrirHoja({ tipo: "habito" }));
   calendario = iniciarCalendario({
     $, el, aviso, google, eventoValido,
     sesion: () => sesion,
     tareas: () => tareas,
     guardarTarea,
+    guardarHabito,
+    borrarHabito,
     anadirTarea: (t) => { tareas.push(t); guardarTarea(t); },
     alCambiarEventos: () => { if (sesion) traerEventos(); },
   });

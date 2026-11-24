@@ -70,39 +70,38 @@
       </section>
 
       <section id="view-habitos" class="view hidden" aria-label="Hábitos">
-        <header class="view-head"><h1 class="title">Hábitos</h1></header>
+        <header class="view-head">
+          <div><h1 class="title">Hábitos</h1><div id="hab-sub" class="small muted"></div></div>
+          <button type="button" id="hab-nuevo" class="redondo primario" aria-label="Nuevo hábito"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
+        </header>
         <div class="grid-2">
           <section class="card">
-            <form id="nuevo" class="row">
-              <input id="nuevo-nombre" placeholder="Nuevo hábito" maxlength="60" autocomplete="off" required>
-              <select id="nuevo-meta" aria-label="Frecuencia">
-                <option value="7">Cada día</option>
-                <option value="1">1×/sem</option><option value="2">2×/sem</option><option value="3">3×/sem</option>
-                <option value="4">4×/sem</option><option value="5">5×/sem</option><option value="6">6×/sem</option>
-              </select>
-              <button type="submit" class="btn primary">Añadir</button>
-            </form>
-            <div id="semana" class="week-head" aria-hidden="true"></div>
-            <ul id="lista" class="list"></ul>
+            <div class="card-head"><h2>Hoy</h2><div id="hab-anillo" class="anillo" role="img"></div></div>
+            <ul id="lista" class="hab-lista"></ul>
           </section>
 
-          <section class="card">
+          <section class="card dash">
             <h2>Consistencia</h2>
             <div class="kpi-grid">
               <div class="kpi"><div class="label">Diarios hoy</div><div id="k-hoy" class="kpi-num">—</div></div>
-              <div class="kpi"><div class="label">Diarios, 7 días</div><div id="k-semana" class="kpi-num">—</div></div>
-              <div class="kpi"><div class="label">Diarios, 30 días</div><div id="k-mes" class="kpi-num">—</div></div>
+              <div class="kpi"><div class="label">Media 7 días</div><div id="k-semana" class="kpi-num">—</div></div>
+              <div class="kpi"><div class="label">Media 30 días</div><div id="k-mes" class="kpi-num">—</div></div>
               <div class="kpi"><div class="label">Semanales cumplidos</div><div id="k-sem" class="kpi-num">—</div></div>
             </div>
-            <div class="label">Hábitos diarios, últimas 12 semanas</div>
-            <div id="mapa" class="heatmap" role="img" aria-label="Mapa de calor de las últimas 12 semanas"></div>
-            <table class="tabla">
-              <thead><tr><th>Hábito</th><th>Racha</th><th>Mejor</th><th>Semana</th></tr></thead>
-              <tbody id="tabla"></tbody>
-            </table>
+            <div class="g-cab"><div class="label">Hábitos diarios cumplidos, últimos 30 días</div><div id="graf-info" class="g-info" aria-live="polite"></div></div>
+            <div id="grafico" class="grafico"></div>
+            <div class="label">Últimas 12 semanas</div>
+            <div class="mapa-wrap">
+              <div class="mapa-dias" aria-hidden="true"><span>L</span><span></span><span>X</span><span></span><span>V</span><span></span><span>D</span></div>
+              <div id="mapa" class="heatmap" role="img" aria-label="Mapa de calor de las últimas 12 semanas"></div>
+            </div>
+            <div class="mapa-leyenda" aria-hidden="true">Menos <span></span><span class="l1"></span><span class="l2"></span><span class="l3"></span><span class="l4"></span> Más</div>
+            <div class="label">Rachas</div>
+            <ul id="tabla" class="rachas"></ul>
           </section>
         </div>
       </section>
+
       <section id="view-calendario" class="view cal-view hidden" aria-label="Calendario">
         <header class="cal-top">
           <div id="cal-tit" class="cal-tit"><h1 id="cal-titulo" class="title"></h1><span id="cal-sub" class="small muted"></span></div>
