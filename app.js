@@ -1,6 +1,7 @@
 import { clave, desdeClave, sumarDias, ultimosDias, tasaSemanal, tasaDia, esDiario, hechosSemana, racha, mejor } from "./stats.js";
 import { emojiDe } from "./emoji.js";
 import { agrupar, CATEGORIAS, categoriaDe } from "./categorias.js";
+import { rejillaMes, lunesDe, mover, delDia } from "./agenda.js";
 
 // Datos: copia en este navegador (localStorage) y, con sesión iniciada, sincronizados en Supabase.
 const STORE = "organizador.habitos.v1";
@@ -258,6 +259,151 @@ function pintar() {
   pintarTareas(k, hoy);
   pintarLista(hoy);
   pintarDashboard(hoy);
+  if (!$("#view-calendario").classList.contains("hidden")) pintarCal();
+}
+
+// ---- Pestaña Calendario: mes → semana → día. Eventos de Google por mes, en memoria. ----
+const cal = { modo: "mes", fecha: new Date(), meses: new Map(), cargando: new Set(), error: false };
+const HORA_PX = 44;
+const MESES_TXT = (d, o) => d.toLocaleDateString("es-ES", o);
+const eventoValido = (e) =>
+  typeof e?.titulo === "string" && (e.calendario === undefined || typeof e.calendario === "string") &&
+  (e.dia ? FECHA.test(e.dia) && (e.diaFin === undefined || FECHA.test(e.diaFin))
+    : !isNaN(Date.parse(e.inicio)) && !isNaN(Date.parse(e.fin)));
+const claveMes = (d) => clave(d).slice(0, 7);
+
+async function cargarMes(d) {
+  const km = claveMes(d);
+  if (!sesion || cal.meses.has(km) || cal.cargando.has(km)) return;
+  cal.cargando.add(km);
+  pintarEstado();
+  const r = rejillaMes(d);
+  const { data, error } = await sb.functions.invoke("quick-handler", {
+    body: { desde: r[0].toISOString(), hasta: sumarDias(r[41], 1).toISOString() },
+  });
+  cal.cargando.delete(km);
+  cal.error = !!error;
+  if (!error && Array.isArray(data?.eventos)) cal.meses.set(km, data.eventos.filter(eventoValido));
+  if (claveMes(cal.fecha) === km) pintarCal();
+}
+const eventosCal = () => cal.meses.get(claveMes(cal.fecha)) ?? [];
+
+function pintarEstado() {
+  $("#cal-estado").textContent = !sesion ? "Inicia sesión para ver tu Google Calendar."
+    : cal.cargando.has(claveMes(cal.fecha)) ? "Cargando…" : cal.error ? "No se pudo cargar el calendario." : "";
+}
+
+const colorDe = (e) => categoriaDe(e.calendario).color;
+function chip(e, clase = "chip") {
+  const c = el("span", { className: clase, textContent: e.titulo });
+  c.style.setProperty("--c", colorDe(e));
+  return c;
+}
+
+function vistaMes() {
+  const hoy = clave(new Date()), mes = cal.fecha.getMonth(), ev = eventosCal();
+  const dias = rejillaMes(cal.fecha);
+  const filas = Array.from({ length: 6 }, (_, f) => el("div", { className: "mes-fila" }, ...dias.slice(f * 7, f * 7 + 7).map((d) => {
+    const k = clave(d), { todoDia, conHora } = delDia(ev, k), todos = [...todoDia, ...conHora];
+    const b = el("button", { type: "button", className: `celda${d.getMonth() !== mes ? " fuera" : ""}${k === hoy ? " hoy" : ""}` },
+      el("span", { className: "num", textContent: d.getDate() }),
+      ...todos.slice(0, 3).map((e) => chip(e)),
+      todos.length > 3 ? el("span", { className: "mas", textContent: `+${todos.length - 3}` }) : "");
+    b.setAttribute("aria-label", `${MESES_TXT(d, { weekday: "long", day: "numeric", month: "long" })}, ${todos.length} eventos`);
+    b.addEventListener("click", () => irA("semana", d, b.parentElement));
+    return b;
+  })));
+  return el("div", { className: "mes" },
+    el("div", { className: "mes-cab" }, ...["L", "M", "X", "J", "V", "S", "D"].map((l) => el("span", { textContent: l }))), ...filas);
+}
+
+/** Rejilla de horas para uno (día) o siete (semana) días. */
+function vistaHoras(dias, scroll) {
+  const hoy = clave(new Date()), ev = eventosCal(), semana = dias.length > 1;
+  const datos = dias.map((d) => ({ d, k: clave(d), ...delDia(ev, clave(d)) }));
+  const cab = el("div", { className: "h-cab" }, el("span"), ...datos.map(({ d, k }) => {
+    const b = el("button", { type: "button", className: k === hoy ? "hoy" : "" },
+      el("small", { textContent: MESES_TXT(d, { weekday: "short" }) }), el("b", { textContent: d.getDate() }));
+    if (semana) b.addEventListener("click", () => irA("dia", d, b));
+    else b.disabled = true;
+    return b;
+  }));
+  const conTodoDia = datos.some((x) => x.todoDia.length);
+  const todoDia = el("div", { className: `h-todo${conTodoDia ? "" : " hidden"}` }, el("span", { className: "h-lbl", textContent: "Todo el día" }),
+    ...datos.map((x) => el("div", {}, ...x.todoDia.map((e) => chip(e)))));
+  const horas = el("div", { className: "h-horas" }, ...Array.from({ length: 24 }, (_, h) => el("span", { textContent: h ? `${String(h).padStart(2, "0")}:00` : "" })));
+  const cols = datos.map(({ d, k, conHora }) => {
+    const col = el("div", { className: `h-col${k === hoy ? " hoy" : ""}` }, ...conHora.map((e) => {
+      const b = el("div", { className: "bloque" }, el("b", { textContent: e.titulo }),
+        el("small", { textContent: `${hora(e.inicio)}–${hora(e.fin)}` }));
+      b.style.setProperty("--c", colorDe(e));
+      b.style.top = `${(e.desde / 60) * HORA_PX}px`;
+      b.style.height = `${Math.max(((e.hasta - e.desde) / 60) * HORA_PX - 2, 18)}px`;
+      b.style.left = `${(e.col / e.cols) * 100}%`;
+      b.style.width = `calc(${100 / e.cols}% - 2px)`;
+      return b;
+    }));
+    if (k === hoy) {
+      const n = new Date(), linea = el("div", { className: "ahora" });
+      linea.style.top = `${((n.getHours() * 60 + n.getMinutes()) / 60) * HORA_PX}px`;
+      col.append(linea);
+    }
+    if (semana) col.addEventListener("click", () => irA("dia", d, col));
+    return col;
+  });
+  const cuerpo = el("div", { className: "h-scroll" }, el("div", { className: "h-cuerpo" }, horas, ...cols));
+  const vista = el("div", { className: `horas ${semana ? "sem" : "uno"}` }, cab, todoDia, cuerpo);
+  if (!semana) {
+    const k = clave(dias[0]), lista = tareas.filter((t) => t.fecha === k).sort((a, b) => a.hecha - b.hecha);
+    if (lista.length) vista.append(el("div", { className: "label", textContent: "Tareas" }),
+      el("ul", { className: "list" }, ...lista.map((t) => filaTarea(t, t.categoria ? `${categoriaDe(t.categoria).emoji} ${categoriaDe(t.categoria).nombre}` : ""))));
+  }
+  // Al abrir, baja hasta la hora actual (hoy) o hasta las 7:00. Al repintar la misma vista, se queda donde estaba.
+  requestAnimationFrame(() => {
+    const n = new Date(), h = datos.some((x) => x.k === hoy) ? Math.max(n.getHours() - 1, 0) : 7;
+    cuerpo.scrollTop = scroll ?? h * HORA_PX;
+  });
+  return vista;
+}
+
+function pintarCal() {
+  const d = cal.fecha;
+  $("#cal-titulo").textContent = cal.modo === "dia" ? MESES_TXT(d, { weekday: "long", day: "numeric", month: "long" })
+    : MESES_TXT(d, { month: "long", year: "numeric" });
+  for (const b of document.querySelectorAll("[data-modo]")) b.setAttribute("aria-pressed", String(b.dataset.modo === cal.modo));
+  pintarEstado();
+  const vista = `${cal.modo} ${clave(cal.modo === "semana" ? lunesDe(d) : d)}`;
+  const scroll = vista === cal.vista ? $("#cal .h-scroll")?.scrollTop : undefined;
+  cal.vista = vista;
+  $("#cal").replaceChildren(cal.modo === "mes" ? vistaMes()
+    : vistaHoras(cal.modo === "dia" ? [d] : Array.from({ length: 7 }, (_, i) => sumarDias(lunesDe(d), i)), scroll));
+  cargarMes(d);
+}
+
+/** Cambia de vista con una animación: acercar (mes→semana→día), alejar o deslizar. */
+const NIVEL = { mes: 0, semana: 1, dia: 2 };
+function irA(modo, fecha, origen) {
+  const anim = NIVEL[modo] > NIVEL[cal.modo] ? "acercar" : NIVEL[modo] < NIVEL[cal.modo] ? "alejar"
+    : fecha > cal.fecha ? "sig" : fecha < cal.fecha ? "ant" : "";
+  const caja = $("#cal").getBoundingClientRect();
+  const punto = (r) => `${r.left + r.width / 2 - caja.left}px ${r.top + r.height / 2 - caja.top}px`;
+  let foco = origen ? punto(origen.getBoundingClientRect()) : "50% 0";
+  cal.modo = modo;
+  cal.fecha = fecha;
+  pintarCal();
+  // Al alejar, la vista nueva sale del sitio donde estaba la anterior (la fila de la semana o la columna del día).
+  if (anim === "alejar") {
+    const k = clave(fecha);
+    const destino = modo === "mes" ? [...document.querySelectorAll(".mes-fila")].find((f, i) => rejillaMes(fecha).slice(i * 7, i * 7 + 7).some((d) => clave(d) === k))
+      : document.querySelectorAll(".h-col")[(fecha.getDay() + 6) % 7];
+    if (destino) foco = punto(destino.getBoundingClientRect());
+  }
+  const c = $("#cal");
+  if (!anim || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  c.style.transformOrigin = foco;
+  c.classList.remove("acercar", "alejar", "sig", "ant");
+  void c.offsetWidth;
+  c.classList.add(anim);
 }
 
 function mostrar(vista) {
@@ -265,6 +411,7 @@ function mostrar(vista) {
   for (const b of document.querySelectorAll("[data-view]")) {
     if (b.dataset.view === vista) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current");
   }
+  if (vista === "calendario") pintarCal();
 }
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -279,6 +426,18 @@ document.addEventListener("DOMContentLoaded", () => {
     $("#nuevo-nombre").value = "";
     guardar(h);
   });
+  for (const b of document.querySelectorAll("[data-modo]")) b.addEventListener("click", () => irA(b.dataset.modo, cal.fecha));
+  $("#cal-prev").addEventListener("click", () => irA(cal.modo, mover(cal.modo, cal.fecha, -1)));
+  $("#cal-next").addEventListener("click", () => irA(cal.modo, mover(cal.modo, cal.fecha, 1)));
+  $("#cal-hoy").addEventListener("click", () => irA(cal.modo, new Date()));
+  // Deslizar a los lados cambia de mes, semana o día.
+  let toque = null;
+  $("#cal").addEventListener("touchstart", (e) => { toque = e.touches[0]; }, { passive: true });
+  $("#cal").addEventListener("touchend", (e) => {
+    const t = e.changedTouches[0], dx = t.clientX - (toque?.clientX ?? t.clientX), dy = t.clientY - (toque?.clientY ?? t.clientY);
+    if (Math.abs(dx) > 60 && Math.abs(dx) > 2 * Math.abs(dy)) irA(cal.modo, mover(cal.modo, cal.fecha, dx < 0 ? 1 : -1));
+    toque = null;
+  });
   $("#tarea-fecha").value = clave(new Date());
   $("#tarea-categoria").append(...CATEGORIAS.map((c) => el("option", { value: c.id, textContent: `${c.emoji} ${c.nombre}` })));
   $("#nueva-tarea").addEventListener("submit", (e) => {
@@ -290,13 +449,27 @@ document.addEventListener("DOMContentLoaded", () => {
     const t = { id: crypto.randomUUID(), texto, fecha, hecha: false, ...(CATEGORIAS.some((c) => c.id === cat) && { categoria: cat }) };
     tareas.push(t);
     $("#tarea-texto").value = "";
-    $("#tarea-fecha").value = clave(new Date());
+    for (const b of document.querySelectorAll("[data-modo]")) b.addEventListener("click", () => irA(b.dataset.modo, cal.fecha));
+  $("#cal-prev").addEventListener("click", () => irA(cal.modo, mover(cal.modo, cal.fecha, -1)));
+  $("#cal-next").addEventListener("click", () => irA(cal.modo, mover(cal.modo, cal.fecha, 1)));
+  $("#cal-hoy").addEventListener("click", () => irA(cal.modo, new Date()));
+  // Deslizar a los lados cambia de mes, semana o día.
+  let toque = null;
+  $("#cal").addEventListener("touchstart", (e) => { toque = e.touches[0]; }, { passive: true });
+  $("#cal").addEventListener("touchend", (e) => {
+    const t = e.changedTouches[0], dx = t.clientX - (toque?.clientX ?? t.clientX), dy = t.clientY - (toque?.clientY ?? t.clientY);
+    if (Math.abs(dx) > 60 && Math.abs(dx) > 2 * Math.abs(dy)) irA(cal.modo, mover(cal.modo, cal.fecha, dx < 0 ? 1 : -1));
+    toque = null;
+  });
+  $("#tarea-fecha").value = clave(new Date());
     guardarTarea(t);
   });
   // Al volver a la app: repinta con la fecha nueva y trae los cambios del otro dispositivo.
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) return;
     pintar();
+    cal.meses.clear();
+    if (!$("#view-calendario").classList.contains("hidden")) pintarCal();
     if (sesion) { bajar(); traerEventos(); }
   });
   $("#login-form").addEventListener("submit", async (e) => {
@@ -326,6 +499,7 @@ document.addEventListener("DOMContentLoaded", () => {
     habitos = [];
     tareas = [];
     eventos = [];
+    cal.meses.clear();
     guardarLocal();
     pintar();
   });

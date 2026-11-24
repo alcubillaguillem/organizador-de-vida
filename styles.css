@@ -163,3 +163,84 @@ select { font: inherit; font-size: 16px; color: var(--text); background: var(--r
 .evento { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 8px; padding: 8px 0; border-top: 1px solid var(--line); }
 .evento:first-child { border-top: 0; }
 .evento .cuando { color: var(--accent); font-family: var(--num); font-size: 14px; }
+
+/* Calendario */
+.tabbar { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.cal-head { flex-wrap: wrap; }
+.cal-head .title { font-size: 26px; }
+.cal-head .title::first-letter { text-transform: uppercase; }
+.cal-nav { display: flex; gap: 6px; }
+.cal-nav .btn { padding: 8px 14px; }
+.seg { display: grid; grid-template-columns: repeat(3, 1fr); background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 4px; max-width: 360px; }
+.seg button { border: 0; background: transparent; color: var(--muted); padding: 8px; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; transition: background .2s, color .2s; }
+.seg button[aria-pressed="true"] { background: var(--raised); color: var(--text); }
+.cal-card { padding: 8px; overflow: hidden; }
+.cal { --c: var(--muted); }
+.cal.acercar { animation: cal-acercar .34s cubic-bezier(.2, .8, .2, 1); }
+.cal.alejar { animation: cal-alejar .34s cubic-bezier(.2, .8, .2, 1); }
+.cal.sig { animation: cal-sig .26s ease-out; }
+.cal.ant { animation: cal-ant .26s ease-out; }
+@keyframes cal-acercar { from { opacity: 0; transform: scale(.4); } }
+@keyframes cal-alejar { from { opacity: 0; transform: scale(2.2); } }
+@keyframes cal-sig { from { opacity: 0; transform: translateX(48px); } }
+@keyframes cal-ant { from { opacity: 0; transform: translateX(-48px); } }
+@media (prefers-reduced-motion: reduce) { .cal { animation: none !important; } }
+
+.chip, .bloque { background: color-mix(in srgb, var(--c) 24%, var(--card)); border-left: 3px solid var(--c); color: var(--text); }
+.chip { display: block; font-size: 11px; line-height: 16px; padding: 0 4px; border-radius: 4px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+
+/* Mes */
+.mes-cab, .mes-fila { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
+.mes-cab span { text-align: center; font-size: 12px; color: var(--muted); padding: 4px 0 8px; }
+.celda {
+  min-height: 96px; border: 0; border-top: 1px solid var(--line); background: transparent; padding: 4px 3px; cursor: pointer;
+  display: flex; flex-direction: column; gap: 2px; text-align: left; min-width: 0; border-radius: 0; transition: background .15s;
+}
+.celda:hover { background: var(--raised); }
+.celda .num { align-self: center; width: 26px; height: 26px; display: grid; place-items: center; font: 600 13px var(--num); border-radius: 13px; }
+.celda.fuera > * { opacity: .35; }
+.celda.hoy .num { background: var(--accent); color: var(--accent-text); }
+.celda .mas { font-size: 11px; color: var(--muted); padding-left: 4px; }
+@media (max-width: 520px) {
+  .celda { min-height: 74px; padding: 2px 1px; }
+  .chip { font-size: 9.5px; line-height: 14px; padding: 0 2px; border-left-width: 2px; }
+}
+
+/* Semana y día */
+.horas { --hora: 44px; --lbl: 44px; }
+.h-cab, .h-todo, .h-cuerpo { display: grid; grid-template-columns: var(--lbl) repeat(var(--n, 7), minmax(0, 1fr)); }
+.horas.uno { --n: 1; }
+.h-cab button { border: 0; background: transparent; padding: 4px 0 8px; display: flex; flex-direction: column; align-items: center; gap: 2px; cursor: pointer; color: var(--muted); }
+.h-cab button:disabled { cursor: default; }
+.h-cab small { font-size: 11px; text-transform: capitalize; }
+.h-cab b { font: 600 17px var(--num); color: var(--text); width: 32px; height: 32px; display: grid; place-items: center; border-radius: 16px; }
+.h-cab .hoy b { background: var(--accent); color: var(--accent-text); }
+.h-todo { border-top: 1px solid var(--line); padding: 4px 0; }
+.h-todo > div { display: flex; flex-direction: column; gap: 2px; padding: 0 1px; min-width: 0; }
+.h-lbl { font-size: 9px; color: var(--muted); line-height: 1.1; padding-top: 2px; }
+.h-scroll { max-height: calc(100dvh - 330px - var(--tabbar-h)); min-height: 320px; overflow-y: auto; border-top: 1px solid var(--line); -webkit-overflow-scrolling: touch; }
+.h-cuerpo { position: relative; height: calc(24 * var(--hora)); }
+.h-horas { display: flex; flex-direction: column; }
+.h-horas span { height: var(--hora); font: 11px var(--num); color: var(--muted); transform: translateY(-7px); }
+.h-col {
+  position: relative; border-left: 1px solid var(--line); cursor: pointer;
+  background: repeating-linear-gradient(to bottom, transparent 0 calc(var(--hora) - 1px), var(--line) calc(var(--hora) - 1px) var(--hora));
+}
+.horas.uno .h-col { cursor: default; }
+.h-col.hoy { background-color: rgba(197, 240, 74, .03); }
+.bloque { position: absolute; border-radius: 6px; padding: 2px 4px; overflow: hidden; font-size: 11px; line-height: 1.25; }
+.bloque b { display: block; font-weight: 600; overflow: hidden; text-overflow: ellipsis; }
+.bloque small { display: block; color: var(--muted); font-size: 10px; }
+.horas.uno .bloque { font-size: 14px; padding: 4px 8px; }
+.horas.uno .bloque small { font-size: 12px; }
+@media (min-width: 900px) { .h-scroll { max-height: calc(100dvh - 300px); } }
+.horas.sem .bloque b { white-space: normal; text-overflow: clip; }
+.ahora { position: absolute; left: -1px; right: 0; height: 2px; background: var(--accent); z-index: 2; pointer-events: none; }
+.ahora::before { content: ""; position: absolute; left: -4px; top: -3px; width: 8px; height: 8px; border-radius: 4px; background: var(--accent); }
+@media (max-width: 520px) {
+  .horas { --lbl: 36px; }
+  .horas.sem .bloque { padding: 1px 2px; font-size: 9.5px; border-left-width: 2px; }
+  .horas.sem .bloque small { display: none; }
+}
+.horas > .list { margin: 0 8px 8px; }
+.horas > .label { margin: 16px 8px 4px; }

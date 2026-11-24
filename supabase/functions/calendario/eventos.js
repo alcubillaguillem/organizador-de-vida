@@ -13,7 +13,7 @@ export function eventosEntre(ICAL, ics, ini, fin) {
     const s = inicio.toJSDate(), e = final.toJSDate();
     if (e > ini && s < fin) {
       eventos.push(inicio.isDate
-        ? { titulo, calendario, dia: inicio.toString() }
+        ? { titulo, calendario, dia: inicio.toString(), diaFin: final.toString() }
         : { titulo, calendario, inicio: s.toISOString(), fin: e.toISOString() });
     }
   };
