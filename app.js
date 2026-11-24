@@ -283,7 +283,8 @@ async function cargarMes(d) {
   const { data, error } = await google({ accion: "listar", desde: r[0].toISOString(), hasta: sumarDias(r[41], 1).toISOString() });
   cal.cargando.delete(km);
   cal.error = !!error;
-  if (!error && Array.isArray(data?.eventos)) cal.meses.set(km, data.eventos.filter(eventoValido));
+  // Si falla, se guarda vacío para no reintentar en bucle; se reintenta al volver a la app.
+  cal.meses.set(km, !error && Array.isArray(data?.eventos) ? data.eventos.filter(eventoValido) : []);
   if (claveMes(cal.fecha) === km) pintarCal();
 }
 const eventosCal = () => cal.meses.get(claveMes(cal.fecha)) ?? [];
