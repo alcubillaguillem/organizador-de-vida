@@ -2,6 +2,7 @@ import { clave, desdeClave, sumarDias, ultimosDias, tasaSemanal, tasaDia, esDiar
 import { emojiDe } from "./emoji.js";
 import { agrupar, CATEGORIAS, categoriaDe } from "./categorias.js";
 import { iniciarCalendario } from "./calendario.js";
+import { limpiarResumen } from "./resumen.js";
 
 // Datos: copia en este navegador (localStorage) y, con sesión iniciada, sincronizados en Supabase.
 const STORE = "organizador.habitos.v1";
@@ -294,6 +295,29 @@ async function traerEventos() {
   pintar();
 }
 
+// Resumen de la mañana (lo escribe Claude a las 7:00). Solo en memoria; todo se pinta con textContent.
+async function traerResumen() {
+  const { data, error } = await sb.from("resumenes").select("fecha,contenido,created_at").order("fecha", { ascending: false }).limit(1);
+  const f = !error && data?.[0];
+  const r = f && limpiarResumen(f.contenido);
+  const cuerpo = $("#resumen-cuerpo");
+  if (!r) return;
+  $("#resumen-hora").textContent = `${f.fecha === clave(new Date()) ? "Hoy" : fechaCorta(f.fecha)} · ${hora(f.created_at)}`;
+  const correos = r.correos.map((m) => el("li", { className: m.importante ? "correo importante" : "correo" },
+    el("div", { className: "correo-cab" }, el("strong", { textContent: m.asunto || "(sin asunto)" }), el("small", { textContent: m.de })),
+    el("p", { textContent: m.resumen })));
+  const ev = r.evangelio;
+  cuerpo.replaceChildren(
+    r.dia ? el("p", { className: "resumen-dia", textContent: r.dia }) : "",
+    el("div", { className: "label", textContent: `✉️ Correos (${r.correos.length})` }),
+    correos.length ? el("ul", { className: "list" }, ...correos) : el("p", { className: "small muted", textContent: "Nada nuevo." }),
+    ev ? el("details", { className: "evangelio" },
+      el("summary", { textContent: `✝️ Evangelio · ${ev.cita}` }),
+      el("p", { textContent: ev.texto }),
+      ev.reflexion ? el("p", { className: "small muted", textContent: ev.reflexion }) : "",
+      ev.enlace ? el("a", { href: ev.enlace, target: "_blank", rel: "noopener noreferrer", textContent: "Leer en la fuente" }) : "") : "");
+}
+
 const hora = (iso) => new Date(iso).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });
 function pintarEventos() {
   $("#eventos").replaceChildren(...agrupar(eventos, (e) => e.calendario).map((g) => el("li", { className: "grupo" },
@@ -414,6 +438,8 @@ document.addEventListener("DOMContentLoaded", () => {
     habitos = [];
     tareas = [];
     eventos = [];
+    $("#resumen-hora").textContent = "";
+    $("#resumen-cuerpo").replaceChildren(el("p", { className: "empty", textContent: "Inicia sesión para ver el resumen." }));
     calendario.limpiar();
     guardarLocal();
     pintar();
@@ -431,7 +457,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const entra = !sesion && s;
       sesion = s;
       pintarSesion();
-      if (entra) setTimeout(() => { bajar(); traerEventos(); }); // fuera del callback, como pide supabase-js
+      if (entra) setTimeout(() => { bajar(); traerEventos(); traerResumen(); }); // fuera del callback, como pide supabase-js
     });
   } else pintarSesion();
   mostrar("inicio");
