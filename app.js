@@ -1,24 +1,61 @@
 import { clave, desdeClave, sumarDias, ultimosDias, tasaSemanal, tasaDia, esDiario, hechosSemana, racha, mejor } from "./stats.js";
 import { emojiDe } from "./emoji.js";
 
-// Datos: solo en este navegador (localStorage). La sincronización llegará con Supabase.
+// Datos: copia en este navegador (localStorage) y, con sesión iniciada, sincronizados en Supabase.
 const STORE = "organizador.habitos.v1";
 const $ = (s) => document.querySelector(s);
+const cfg = window.APP_CONFIG || {};
+const sb = cfg.supabaseUrl && window.supabase ? window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey) : null;
+let sesion = null;
+
+// Valida cualquier dato leído (navegador o servidor): descarta lo que no tenga la forma esperada.
+const FECHA = /^\d{4}-\d{2}-\d{2}$/;
+const valido = (h) =>
+  typeof h?.id === "string" && typeof h.nombre === "string" && FECHA.test(h.creado) &&
+  Array.isArray(h.dias) && h.dias.every((d) => FECHA.test(d)) &&
+  (h.meta === undefined || (Number.isInteger(h.meta) && h.meta >= 1 && h.meta <= 7));
 
 function cargar() {
   try {
     const datos = JSON.parse(localStorage.getItem(STORE) || "[]");
-    const fecha = /^\d{4}-\d{2}-\d{2}$/;
-    // Valida lo leído: descarta cualquier cosa que no tenga la forma esperada.
-    return Array.isArray(datos) ? datos.filter((h) =>
-      typeof h?.id === "string" && typeof h.nombre === "string" && fecha.test(h.creado) &&
-      Array.isArray(h.dias) && h.dias.every((d) => fecha.test(d)) &&
-      (h.meta === undefined || (Number.isInteger(h.meta) && h.meta >= 1 && h.meta <= 7))) : [];
+    return Array.isArray(datos) ? datos.filter(valido) : [];
   } catch { return []; }
 }
 
 let habitos = cargar();
-const guardar = () => { localStorage.setItem(STORE, JSON.stringify(habitos)); pintar(); };
+const guardarLocal = () => localStorage.setItem(STORE, JSON.stringify(habitos));
+
+const aFila = (h) => ({ id: h.id, nombre: h.nombre, meta: h.meta ?? null, creado: h.creado, dias: h.dias, updated_at: new Date().toISOString() });
+const deFila = (f) => ({ id: f.id, nombre: f.nombre, creado: f.creado, dias: f.dias, ...(f.meta < 7 && { meta: f.meta }) });
+const fallo = (error) => { if (error) aviso("No se pudo sincronizar. Revisa la conexión."); };
+
+/** Guarda un hábito cambiado (o borrado) en local y, si hay sesión, en Supabase. */
+async function guardar(h, borrado = false) {
+  guardarLocal();
+  pintar();
+  if (!sesion || !h) return;
+  const q = sb.from("habitos");
+  const { error } = borrado ? await q.delete().eq("id", h.id) : await q.upsert(aFila(h));
+  fallo(error);
+}
+
+/** Trae los hábitos del servidor. La primera vez, sube los que ya hubiera en este navegador. */
+async function bajar() {
+  const { data, error } = await sb.from("habitos").select("id,nombre,meta,creado,dias").order("created_at");
+  if (error) return fallo(error);
+  if (!data.length && habitos.length) return fallo((await sb.from("habitos").upsert(habitos.map(aFila))).error);
+  habitos = data.map(deFila).filter(valido);
+  guardarLocal();
+  pintar();
+}
+
+function pintarSesion() {
+  const conLogin = !!sb && !sesion;
+  $("#login").classList.toggle("hidden", !conLogin);
+  $(".shell").classList.toggle("hidden", conLogin);
+  $("#cuenta").textContent = sesion ? `Sincronizado: ${sesion.user.email}` : "Modo local (solo este navegador)";
+  $("#salir").classList.toggle("hidden", !sesion);
+}
 
 /** Crea un elemento. El texto siempre va por textContent, nunca como HTML. */
 function el(tag, props = {}, ...hijos) {
@@ -70,7 +107,7 @@ function cambiarFrecuencia(h) {
   const n = Number(r);
   if (!Number.isInteger(n) || n < 1 || n > 7) return aviso("Pon un número del 1 al 7.");
   h.meta = n;
-  guardar();
+  guardar(h);
 }
 
 function pintarLista(hoy) {
@@ -94,7 +131,7 @@ function pintarLista(hoy) {
       b.addEventListener("click", () => {
         const antes = hechosSemana(h.dias, hoy);
         h.dias = h.dias.includes(k) ? h.dias.filter((d) => d !== k) : [...h.dias, k];
-        guardar();
+        guardar(h);
         if (!esDiario(h) && antes < h.meta && hechosSemana(h.dias, hoy) >= h.meta) aviso(`¡${h.nombre}: semana cumplida!`);
       });
       return b;
@@ -102,7 +139,7 @@ function pintarLista(hoy) {
     (() => {
       const b = el("button", { type: "button", className: "del", ariaLabel: `Borrar ${h.nombre}` }, icono("M6 6l12 12M18 6 6 18"));
       b.addEventListener("click", () => {
-        if (confirm(`¿Borrar «${h.nombre}» y todo su historial?`)) { habitos = habitos.filter((x) => x !== h); guardar(); }
+        if (confirm(`¿Borrar «${h.nombre}» y todo su historial?`)) { habitos = habitos.filter((x) => x !== h); guardar(h, true); }
       });
       return b;
     })(),
@@ -161,12 +198,37 @@ document.addEventListener("DOMContentLoaded", () => {
     const nombre = $("#nuevo-nombre").value.trim().slice(0, 60);
     if (!nombre) return;
     const meta = Number($("#nuevo-meta").value);
-    habitos.push({ id: crypto.randomUUID(), nombre, creado: clave(new Date()), dias: [], ...(meta < 7 && { meta }) });
+    const h = { id: crypto.randomUUID(), nombre, creado: clave(new Date()), dias: [], ...(meta < 7 && { meta }) };
+    habitos.push(h);
     $("#nuevo-nombre").value = "";
-    guardar();
+    guardar(h);
   });
-  // Al volver a la app otro día, repinta con la fecha nueva.
-  document.addEventListener("visibilitychange", () => { if (!document.hidden) pintar(); });
+  // Al volver a la app: repinta con la fecha nueva y trae los cambios del otro dispositivo.
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) return;
+    pintar();
+    if (sesion) bajar();
+  });
+  $("#login-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    $("#login-msg").textContent = "";
+    const { error } = await sb.auth.signInWithPassword({ email: $("#login-email").value.trim(), password: $("#login-pass").value });
+    if (error) $("#login-msg").textContent = "Email o contraseña incorrectos.";
+  });
+  $("#salir").addEventListener("click", async () => {
+    await sb.auth.signOut();
+    habitos = [];
+    guardarLocal();
+    pintar();
+  });
+  if (sb) {
+    sb.auth.onAuthStateChange((_evento, s) => {
+      const entra = !sesion && s;
+      sesion = s;
+      pintarSesion();
+      if (entra) setTimeout(bajar); // fuera del callback, como pide supabase-js
+    });
+  } else pintarSesion();
   mostrar("inicio");
   pintar();
   if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
