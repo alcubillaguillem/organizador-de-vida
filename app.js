@@ -1,4 +1,5 @@
 import { clave, desdeClave, sumarDias, ultimosDias, tasaSemanal, tasaDia, esDiario, hechosSemana, racha, mejor } from "./stats.js";
+import { emojiDe } from "./emoji.js";
 
 // Datos: solo en este navegador (localStorage). La sincronización llegará con Supabase.
 const STORE = "organizador.habitos.v1";
@@ -79,7 +80,7 @@ function pintarLista(hoy) {
 
   $("#lista").replaceChildren(...(habitos.length ? habitos.map((h) => el("li", { className: "item" },
     (() => {
-      const b = el("button", { type: "button", className: "name", title: "Cambiar frecuencia", textContent: h.nombre },
+      const b = el("button", { type: "button", className: "name", title: "Cambiar frecuencia", textContent: `${emojiDe(h.nombre)} ${h.nombre}` },
         el("small", { className: !esDiario(h) && hechosSemana(h.dias, hoy) >= h.meta ? "ok" : "", textContent: detalle(h, hoy) }));
       b.addEventListener("click", () => cambiarFrecuencia(h));
       return b;
@@ -126,7 +127,7 @@ function pintarDashboard(hoy) {
   }));
 
   $("#tabla").replaceChildren(...habitos.map((h) => el("tr", {},
-    el("td", {}, h.nombre, el("small", { textContent: frecuencia(h) })),
+    el("td", {}, `${emojiDe(h.nombre)} ${h.nombre}`, el("small", { textContent: frecuencia(h) })),
     el("td", { textContent: `${racha(h, hoy)} ${esDiario(h) ? "d" : "sem"}` }),
     el("td", { textContent: `${mejor(h)} ${esDiario(h) ? "d" : "sem"}` }),
     el("td", { textContent: pct(tasaSemanal(h, hoy)) }),

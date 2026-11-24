@@ -4,6 +4,7 @@ App web instalable (PWA) para el iPhone y el ordenador. Mismo enfoque que Gastos
 
 - `index.html`, `styles.css`, `app.js`: la app.
 - `stats.js`: rachas y porcentajes del habit tracker. Tests: `npm test` (Node 22).
+- `emoji.js`: emoji automático según el nombre del hábito (mapa de palabras clave).
 - `sw.js`, `manifest.webmanifest`, `icons/`: instalación y uso sin conexión.
 - `vendor/fonts/`: Inter y Space Grotesk (licencia SIL OFL), servidas desde la propia app.
 
