@@ -1,6 +1,2 @@
-*.xcodeproj/
-xcuserdata/
-DerivedData/
 .DS_Store
-.build/
-*.xcconfig
+node_modules/
