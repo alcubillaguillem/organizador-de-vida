@@ -336,6 +336,12 @@ export function iniciarCalendario(ctx) {
       b.addEventListener("click", () => elegir(b));
       return b;
     };
+    if (hoja.tipo === "habito") {
+      const meta = hoja.habito?.meta ?? 7;
+      cont.replaceChildren(...[7, 1, 2, 3, 4, 5, 6].map((n) => chip(String(n), n === 7 ? "Cada día" : `${n}×/semana`, "#c5f04a")));
+      elegir([...cont.children].find((b) => b.dataset.valor === String(meta)));
+      return;
+    }
     if (hoja.tipo === "tarea") {
       cont.replaceChildren(chip("", "Sin categoría", "#9a9aa3"), ...CATEGORIAS.map((c) => chip(c.id, `${c.emoji} ${c.nombre}`, c.color)));
       elegir([...cont.children].find((b) => b.dataset.valor === (hoja.categoria ?? "")) ?? cont.firstChild);
@@ -350,11 +356,13 @@ export function iniciarCalendario(ctx) {
   }
 
   function ajustarHoja() {
-    const tarea = hoja.tipo === "tarea", todo = $("#h-todo").checked;
+    const tarea = hoja.tipo === "tarea", habito = hoja.tipo === "habito", todo = $("#h-todo").checked;
     $("#hoja").dataset.tipo = hoja.tipo;
     $("#h-tipo").dataset.modo = hoja.tipo;
-    $("#h-titulo").placeholder = tarea ? "¿Qué tienes que hacer?" : "Título del evento";
-    $("#h-titulo").maxLength = tarea ? 120 : 200;
+    $("#h-titulo").placeholder = habito ? "Nombre del hábito" : tarea ? "¿Qué tienes que hacer?" : "Título del evento";
+    $("#h-titulo").maxLength = habito ? 60 : tarea ? 120 : 200;
+    $("#h-cats").setAttribute("aria-label", habito ? "Frecuencia" : tarea ? "Categoría" : "Calendario");
+    $(".h-grupo").classList.toggle("hidden", habito);
     for (const f of document.querySelectorAll(".h-hora")) f.classList.toggle("oculta", tarea || todo);
     $("#h-fila-todo").classList.toggle("oculta", tarea);
     chipsCats();
@@ -362,6 +370,7 @@ export function iniciarCalendario(ctx) {
 
   /** Abre la hoja. opciones: { evento } para editar, { tipo: "tarea" }, { fecha } o { inicio } para crear. */
   async function abrirHoja(op = {}) {
+    if (op.tipo === "habito") return abrirHabito(op.habito);
     if (!op.evento && op.tipo !== "tarea" && !ctx.sesion()) op = { ...op, tipo: "tarea" };
     if (op.evento && !(op.evento.id && op.evento.cal)) return aviso("Este evento no se puede editar desde aquí.");
     const e = op.evento;
@@ -378,6 +387,16 @@ export function iniciarCalendario(ctx) {
     $("#h-ini").value = horaTxt(ini);
     $("#h-fin").value = horaTxt(fin);
     $("#h-borrar").classList.toggle("hidden", !e);
+    $("#h-borrar").textContent = "Borrar evento";
+    ensenar(!e);
+    if (hoja.tipo === "evento" && !calendarios) {
+      try { await cargarCalendarios(); if (hoja.tipo === "evento") chipsCats(); }
+      catch { $("#h-msg").textContent = "No se pudo conectar con Google Calendar."; }
+    }
+  }
+
+  /** Prepara los campos comunes y muestra la hoja con su animación. */
+  function ensenar(enfocar) {
     $("#h-msg").textContent = "";
     $("#h-guardar").disabled = false;
     ajustarHoja();
@@ -385,11 +404,18 @@ export function iniciarCalendario(ctx) {
     d.classList.remove("cerrando");
     d.showModal();
     animar(d, "abre");
-    if (!e && matchMedia("(hover: hover)").matches) $("#h-titulo").focus();
-    if (hoja.tipo === "evento" && !calendarios) {
-      try { await cargarCalendarios(); if (hoja.tipo === "evento") chipsCats(); }
-      catch { $("#h-msg").textContent = "No se pudo conectar con Google Calendar."; }
-    }
+    if (enfocar && matchMedia("(hover: hover)").matches) $("#h-titulo").focus();
+  }
+
+  /** Hoja para crear (sin hábito) o editar un hábito: nombre y frecuencia. */
+  function abrirHabito(h) {
+    hoja = { tipo: "habito", habito: h ?? null };
+    $("#h-encabezado").textContent = h ? "Editar hábito" : "Nuevo hábito";
+    $("#h-tipo").classList.add("hidden");
+    $("#h-titulo").value = h?.nombre ?? "";
+    $("#h-borrar").classList.toggle("hidden", !h);
+    $("#h-borrar").textContent = "Borrar hábito";
+    ensenar(!h);
   }
 
   function cerrarHoja() {
@@ -403,6 +429,14 @@ export function iniciarCalendario(ctx) {
   async function guardarHoja(accion) {
     const k = $("#h-fecha").value, titulo = $("#h-titulo").value.trim();
     const elegido = $("#h-cats [aria-pressed=true]")?.dataset.valor ?? "";
+    if (hoja.tipo === "habito") {
+      if (accion === "borrar") ctx.borrarHabito(hoja.habito);
+      else if (!titulo) { $("#h-titulo").focus(); animar($("#h-titulo"), "sacude"); return; }
+      else ctx.guardarHabito(hoja.habito, titulo.slice(0, 60), Number(elegido) || 7);
+      cerrarHoja();
+      aviso(accion === "borrar" ? "Hábito borrado" : hoja.habito ? "Hábito actualizado" : "Hábito añadido");
+      return;
+    }
     if (accion !== "borrar" && (!titulo || !FECHA.test(k))) { $("#h-titulo").focus(); animar($("#h-titulo"), "sacude"); return; }
     if (hoja.tipo === "tarea") {
       ctx.anadirTarea({ id: crypto.randomUUID(), texto: titulo.slice(0, 120), fecha: k, hecha: false,
@@ -484,8 +518,11 @@ export function iniciarCalendario(ctx) {
   $("#h-cerrar").addEventListener("click", cerrarHoja);
   $("#hoja").addEventListener("cancel", (e) => { e.preventDefault(); cerrarHoja(); });
   $("#hoja").addEventListener("click", (e) => { if (e.target === $("#hoja")) cerrarHoja(); }); // toque fuera (fondo)
-  $("#h-borrar").addEventListener("click", () => { if (confirm(`¿Borrar «${hoja.evento.titulo}» de Google Calendar?`)) guardarHoja("borrar"); });
-  $("#hoja-form").addEventListener("submit", (e) => { e.preventDefault(); guardarHoja(hoja.evento ? "editar" : "crear"); });
+  $("#h-borrar").addEventListener("click", () => {
+    const pregunta = hoja.tipo === "habito" ? `¿Borrar «${hoja.habito.nombre}» y todo su historial?` : `¿Borrar «${hoja.evento.titulo}» de Google Calendar?`;
+    if (confirm(pregunta)) guardarHoja("borrar");
+  });
+  $("#hoja-form").addEventListener("submit", (e) => { e.preventDefault(); guardarHoja(hoja.evento || hoja.habito ? "editar" : "crear"); });
   hojaArrastrable();
 
   return {
