@@ -435,15 +435,22 @@ html.cal-abierto, html.cal-abierto body { overflow: hidden; overscroll-behavior:
 @media (prefers-reduced-motion: reduce) { .hab-check.pop { animation: none; } }
 
 /* Resumen de la mañana */
-.resumen-dia { margin: 0 0 4px; line-height: 1.5; }
-.correo { padding: 10px 0; border-bottom: 1px solid var(--line, rgba(255,255,255,.08)); }
+.resumen-dia { margin: 0 0 14px; line-height: 1.5; }
+.cajas { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.caja { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; text-align: left; padding: 14px; border-radius: 16px;
+  border: 1px solid var(--line); background: var(--raised); color: inherit; font: inherit; cursor: pointer; transition: transform .15s; min-width: 0; }
+.caja:active { transform: scale(.96); }
+.caja-ic { font-size: 22px; }
+.caja small { color: var(--muted); font-size: 13px; }
+.correo { padding: 10px 0; border-bottom: 1px solid var(--line); }
 .correo:last-child { border-bottom: 0; }
 .correo-cab { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
 .correo-cab small { color: var(--muted); max-width: 45%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .correo p { margin: 4px 0 0; font-size: 14px; color: var(--muted); }
-.correo.importante strong::before { content: "● "; color: var(--accent, #c5f04a); }
-.evangelio { margin-top: 14px; }
-.evangelio summary { cursor: pointer; font-weight: 600; }
-.evangelio p { line-height: 1.6; white-space: pre-line; }
+.correo.importante strong::before { content: "● "; color: var(--accent); }
+.evangelio p { line-height: 1.7; white-space: pre-line; }
+#ev-texto { font-size: 17px; margin-top: 0; }
+.volver { margin-bottom: 6px; font-weight: 600; }
 #activar-avisos { margin: 0 0 12px; }
 #resumen { scroll-margin-top: 16px; }
+#ev-enlace { color: var(--accent); }
