@@ -1,5 +1,6 @@
 import { clave, desdeClave, sumarDias, ultimosDias, tasaSemanal, tasaDia, esDiario, hechosSemana, racha, mejor } from "./stats.js";
 import { emojiDe } from "./emoji.js";
+import { agrupar } from "./categorias.js";
 
 // Datos: copia en este navegador (localStorage) y, con sesión iniciada, sincronizados en Supabase.
 const STORE = "organizador.habitos.v1";
@@ -207,9 +208,11 @@ async function traerEventos() {
 
 const hora = (iso) => new Date(iso).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });
 function pintarEventos() {
-  $("#eventos").replaceChildren(...eventos.map((e) => el("li", { className: "evento" },
-    el("span", { className: "cuando", textContent: e.dia ? "Todo el día" : `${hora(e.inicio)}–${hora(e.fin)}` }),
-    el("span", { textContent: e.titulo }, e.calendario ? el("small", { textContent: e.calendario }) : ""))));
+  $("#eventos").replaceChildren(...agrupar(eventos, (e) => e.calendario).map((g) => el("li", { className: "grupo" },
+    el("div", { className: "label", textContent: `${g.emoji} ${g.nombre}` }),
+    el("ul", { className: "list" }, ...g.items.map((e) => el("li", { className: "evento" },
+      el("span", { className: "cuando", textContent: e.dia ? "Todo el día" : `${hora(e.inicio)}–${hora(e.fin)}` }),
+      el("span", { textContent: e.titulo })))))));
   $("#eventos-wrap").classList.toggle("hidden", !eventos.length);
 }
 

@@ -153,8 +153,9 @@ select { font: inherit; font-size: 16px; color: var(--text); background: var(--r
 @media (max-width: 520px) { #tarea-fecha { flex: 1; } }
 
 /* Eventos del calendario */
-#eventos-wrap .label:first-child { margin-top: 0; }
+#eventos > .grupo:first-child .label { margin-top: 0; }
+.grupo { list-style: none; }
+.grupo .label { margin: 14px 0 4px; }
 .evento { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 8px; padding: 8px 0; border-top: 1px solid var(--line); }
 .evento:first-child { border-top: 0; }
 .evento .cuando { color: var(--accent); font-family: var(--num); font-size: 14px; }
-.evento small { display: block; color: var(--muted); font-size: 12px; }
