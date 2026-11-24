@@ -6,6 +6,7 @@ App web instalable (PWA) para el iPhone y el ordenador. Mismo enfoque que Gastos
 - `stats.js`: rachas y porcentajes del habit tracker. Tests: `npm test` (Node 22).
 - `categorias.js`: categorías de la agenda (coinciden con los calendarios de Google).
 - `agenda.js`: cálculos de la pestaña Calendario (rejilla del mes, eventos de un día, solapes).
+- `calendario.js`: pestaña Calendario (mes y día) y hoja para crear o editar eventos y tareas.
 - `emoji.js`: emoji automático según el nombre del hábito (mapa de palabras clave).
 - `sw.js`, `manifest.webmanifest`, `icons/`: instalación y uso sin conexión.
 - `config.js`: URL y clave publicable de Supabase (pública).

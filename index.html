@@ -49,17 +49,11 @@
       <section id="view-inicio" class="view narrow" aria-label="Inicio">
         <header class="view-head"><div><h1 class="title">Hoy</h1><div id="hoy-fecha" class="small muted"></div></div></header>
         <section class="card">
-          <h2>Agenda</h2>
+          <div class="card-head"><h2>Agenda</h2><button type="button" id="nueva-tarea" class="pildora acento">+ Tarea</button></div>
           <div id="eventos-wrap" class="hidden">
             <ul id="eventos" class="list"></ul>
             <div class="label">Tareas</div>
           </div>
-          <form id="nueva-tarea" class="row">
-            <input id="tarea-texto" placeholder="Nueva tarea" maxlength="120" autocomplete="off" required>
-            <input id="tarea-fecha" type="date" aria-label="Fecha de la tarea">
-            <select id="tarea-categoria" aria-label="Categoría"><option value="">Sin categoría</option></select>
-            <button type="submit" class="btn primary">Añadir</button>
-          </form>
           <ul id="tareas-hoy" class="list"></ul>
           <div id="tareas-prox-wrap" class="hidden">
             <div class="label">Próximos 7 días</div>
@@ -109,42 +103,51 @@
           </section>
         </div>
       </section>
-      <section id="view-calendario" class="view hidden" aria-label="Calendario">
-        <header class="view-head cal-head">
-          <div><h1 id="cal-titulo" class="title"></h1><div id="cal-estado" class="small muted"></div></div>
-          <div class="cal-nav">
-            <button type="button" id="cal-prev" class="btn" aria-label="Anterior">‹</button>
-            <button type="button" id="cal-hoy" class="btn">Hoy</button>
-            <button type="button" id="cal-next" class="btn" aria-label="Siguiente">›</button>
-            <button type="button" id="cal-nuevo" class="btn primary" aria-label="Nuevo evento">+</button>
+      <section id="view-calendario" class="view cal-view hidden" aria-label="Calendario">
+        <header class="cal-top">
+          <div id="cal-tit" class="cal-tit"><h1 id="cal-titulo" class="title"></h1><span id="cal-sub" class="small muted"></span></div>
+          <div class="cal-acc">
+            <button type="button" id="cal-hoy" class="pildora">Hoy</button>
+            <button type="button" id="cal-prev" class="redondo" aria-label="Anterior"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg></button>
+            <button type="button" id="cal-next" class="redondo" aria-label="Siguiente"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button>
+            <button type="button" id="cal-nuevo" class="redondo primario" aria-label="Nuevo"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
           </div>
         </header>
-        <div class="seg" role="group" aria-label="Vista">
+        <div id="cal-seg" class="seg2" role="group" aria-label="Vista" data-modo="mes">
+          <span class="seg-ind" aria-hidden="true"></span>
           <button type="button" data-modo="mes">Mes</button>
-          <button type="button" data-modo="semana">Semana</button>
           <button type="button" data-modo="dia">Día</button>
         </div>
-        <div class="card cal-card"><div id="cal" class="cal"></div></div>
+        <div id="cal-carga" class="cal-carga" aria-hidden="true"></div>
+        <div id="cal" class="cal"></div>
       </section>
     </main>
 
-    <dialog id="ev-dlg" class="dlg" aria-labelledby="ev-tit">
-      <form id="ev-form" class="dlg-form">
-        <h2 id="ev-tit">Nuevo evento</h2>
-        <input id="ev-titulo" placeholder="Título" maxlength="200" autocomplete="off" required>
-        <select id="ev-cal" aria-label="Calendario" required></select>
-        <label class="check"><input type="checkbox" id="ev-todo"> Todo el día</label>
-        <div class="ev-cuando">
-          <input id="ev-fecha" type="date" aria-label="Fecha" required>
-          <input id="ev-ini" type="time" aria-label="Hora de inicio">
-          <input id="ev-fin" type="time" aria-label="Hora de fin">
+    <dialog id="hoja" class="hoja" aria-label="Nuevo">
+      <form id="hoja-form" novalidate>
+        <div class="hoja-top">
+          <div class="asa" aria-hidden="true"></div>
+          <div class="hoja-barra">
+            <button type="button" id="h-cerrar" class="txt-btn">Cancelar</button>
+            <div id="h-tipo" class="seg2 mini" role="group" aria-label="Tipo" data-modo="evento">
+              <span class="seg-ind" aria-hidden="true"></span>
+              <button type="button" data-modo="evento">Evento</button>
+              <button type="button" data-modo="tarea">Tarea</button>
+            </div>
+            <strong id="h-encabezado"></strong>
+            <button type="submit" id="h-guardar" class="txt-btn fuerte">Guardar</button>
+          </div>
         </div>
-        <p id="ev-msg" class="small" role="alert"></p>
-        <div class="dlg-botones">
-          <button type="button" id="ev-borrar" class="btn peligro">Borrar</button>
-          <button type="button" id="ev-cancelar" class="btn">Cancelar</button>
-          <button type="submit" class="btn primary">Guardar</button>
+        <input id="h-titulo" class="h-titulo" maxlength="200" autocomplete="off" enterkeyhint="done" aria-label="Título">
+        <div id="h-cats" class="h-cats" role="group" aria-label="Calendario"></div>
+        <div class="h-grupo">
+          <label id="h-fila-todo" class="h-fila"><span>Todo el día</span><input type="checkbox" id="h-todo" class="interruptor"></label>
+          <label class="h-fila"><span>Fecha</span><input type="date" id="h-fecha" required></label>
+          <label class="h-fila h-hora"><span>Empieza</span><input type="time" id="h-ini"></label>
+          <label class="h-fila h-hora"><span>Termina</span><input type="time" id="h-fin"></label>
         </div>
+        <p id="h-msg" class="h-msg" role="status"></p>
+        <button type="button" id="h-borrar" class="h-borrar hidden">Borrar evento</button>
       </form>
     </dialog>
 
