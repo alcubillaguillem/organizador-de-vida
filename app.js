@@ -1,6 +1,6 @@
 import { clave, desdeClave, sumarDias, ultimosDias, tasaSemanal, tasaDia, esDiario, hechosSemana, racha, mejor } from "./stats.js";
 import { emojiDe } from "./emoji.js";
-import { agrupar } from "./categorias.js";
+import { agrupar, CATEGORIAS, categoriaDe } from "./categorias.js";
 
 // Datos: copia en este navegador (localStorage) y, con sesión iniciada, sincronizados en Supabase.
 const STORE = "organizador.habitos.v1";
@@ -19,7 +19,8 @@ const valido = (h) =>
 const STORE_T = "organizador.tareas.v1";
 const tareaValida = (t) =>
   typeof t?.id === "string" && typeof t.texto === "string" && t.texto.length <= 120 &&
-  FECHA.test(t.fecha) && typeof t.hecha === "boolean";
+  FECHA.test(t.fecha) && typeof t.hecha === "boolean" &&
+  (t.categoria == null || CATEGORIAS.some((c) => c.id === t.categoria));
 
 function leer(store, ok) {
   try {
@@ -38,7 +39,7 @@ const guardarLocal = () => {
 const ahora = () => new Date().toISOString();
 const aFila = (h) => ({ id: h.id, nombre: h.nombre, meta: h.meta ?? null, creado: h.creado, dias: h.dias, updated_at: ahora() });
 const deFila = (f) => ({ id: f.id, nombre: f.nombre, creado: f.creado, dias: f.dias, ...(f.meta < 7 && { meta: f.meta }) });
-const aFilaT = (t) => ({ id: t.id, texto: t.texto, fecha: t.fecha, hecha: t.hecha, updated_at: ahora() });
+const aFilaT = (t) => ({ id: t.id, texto: t.texto, fecha: t.fecha, hecha: t.hecha, categoria: t.categoria ?? null, updated_at: ahora() });
 const fallo = (error) => { if (error) aviso("No se pudo sincronizar. Revisa la conexión."); };
 
 /** Guarda en local y, si hay sesión, sube (o borra) esa fila en Supabase. */
@@ -64,7 +65,7 @@ async function traer(tabla, columnas, locales, aServidor) {
 async function bajar() {
   const [h, t] = await Promise.all([
     traer("habitos", "id,nombre,meta,creado,dias", habitos, aFila),
-    traer("tareas", "id,texto,fecha,hecha", tareas, aFilaT),
+    traer("tareas", "id,texto,fecha,hecha,categoria", tareas, aFilaT),
   ]);
   if (h) habitos = h.map(deFila).filter(valido);
   if (t) tareas = t.filter(tareaValida);
@@ -234,9 +235,13 @@ function pintarTareas(k, hoy) {
   const deHoy = tareas.filter((t) => t.fecha === k).sort((a, b) => a.hecha - b.hecha);
   const limite = clave(sumarDias(hoy, 7));
   const proximas = tareas.filter((t) => t.fecha > k && t.fecha <= limite && !t.hecha).sort((a, b) => a.fecha.localeCompare(b.fecha));
-  const lista = [...atrasadas.map((t) => filaTarea(t, `Atrasada · ${fechaCorta(t.fecha)}`)), ...deHoy.map((t) => filaTarea(t))];
-  $("#tareas-hoy").replaceChildren(...(lista.length ? lista : [el("li", { className: "empty", textContent: "Nada para hoy." })]));
-  $("#tareas-prox").replaceChildren(...proximas.map((t) => filaTarea(t, fechaCorta(t.fecha))));
+  const etiqueta = (t) => (t.fecha < k ? `Atrasada · ${fechaCorta(t.fecha)}` : "");
+  const grupos = agrupar([...atrasadas, ...deHoy], (t) => t.categoria).map((g) => el("li", { className: "grupo" },
+    el("div", { className: "label", textContent: `${g.emoji} ${g.id === "otros" ? "Sin categoría" : g.nombre}` }),
+    el("ul", { className: "list" }, ...g.items.map((t) => filaTarea(t, etiqueta(t))))));
+  $("#tareas-hoy").replaceChildren(...(grupos.length ? grupos : [el("li", { className: "empty", textContent: "Nada para hoy." })]));
+  $("#tareas-prox").replaceChildren(...proximas.map((t) =>
+    filaTarea(t, `${t.categoria ? categoriaDe(t.categoria).emoji + " " : ""}${fechaCorta(t.fecha)}`)));
   $("#tareas-prox-wrap").classList.toggle("hidden", !proximas.length);
 }
 
@@ -275,12 +280,14 @@ document.addEventListener("DOMContentLoaded", () => {
     guardar(h);
   });
   $("#tarea-fecha").value = clave(new Date());
+  $("#tarea-categoria").append(...CATEGORIAS.map((c) => el("option", { value: c.id, textContent: `${c.emoji} ${c.nombre}` })));
   $("#nueva-tarea").addEventListener("submit", (e) => {
     e.preventDefault();
     const texto = $("#tarea-texto").value.trim().slice(0, 120);
     const fecha = FECHA.test($("#tarea-fecha").value) ? $("#tarea-fecha").value : clave(new Date());
     if (!texto) return;
-    const t = { id: crypto.randomUUID(), texto, fecha, hecha: false };
+    const cat = $("#tarea-categoria").value;
+    const t = { id: crypto.randomUUID(), texto, fecha, hecha: false, ...(CATEGORIAS.some((c) => c.id === cat) && { categoria: cat }) };
     tareas.push(t);
     $("#tarea-texto").value = "";
     $("#tarea-fecha").value = clave(new Date());

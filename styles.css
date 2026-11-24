@@ -150,7 +150,11 @@ select { font: inherit; font-size: 16px; color: var(--text); background: var(--r
 .tarea .texto small { display: block; color: var(--muted); font-size: 12px; }
 .tarea .texto small:first-letter { text-transform: uppercase; }
 .tarea.hecha .texto { color: var(--muted); text-decoration: line-through; }
-@media (max-width: 520px) { #tarea-fecha { flex: 1; } }
+@media (max-width: 520px) {
+  #tarea-fecha, #tarea-categoria { flex: 1 1 40%; height: 48px; }
+  #nueva-tarea button { flex-basis: 100%; }
+}
+#tareas-hoy > .grupo:first-child .label { margin-top: 0; }
 
 /* Eventos del calendario */
 #eventos > .grupo:first-child .label { margin-top: 0; }
