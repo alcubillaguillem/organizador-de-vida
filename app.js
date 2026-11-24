@@ -195,12 +195,12 @@ function pintarDashboard(hoy) {
   )));
 }
 
-// Eventos de Google Calendar de hoy (función "calendario" de Supabase). Solo en memoria.
+// Eventos de Google Calendar de hoy (función "calendario" de Supabase, slug quick-handler). Solo en memoria.
 let eventos = [];
 async function traerEventos() {
   const hoy = new Date();
   const desde = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
-  const { data, error } = await sb.functions.invoke("calendario", {
+  const { data, error } = await sb.functions.invoke("quick-handler", {
     body: { desde: desde.toISOString(), hasta: sumarDias(desde, 1).toISOString() },
   });
   eventos = !error && Array.isArray(data?.eventos) ? data.eventos.filter((e) => typeof e?.titulo === "string" && (e.calendario === undefined || typeof e.calendario === "string")) : [];
