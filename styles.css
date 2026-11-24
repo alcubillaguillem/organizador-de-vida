@@ -139,4 +139,5 @@ select { font: inherit; font-size: 16px; color: var(--text); background: var(--r
 .login img { align-self: center; border-radius: 14px; }
 .login p { margin: 0; }
 #login-msg { color: var(--danger); min-height: 1em; }
+#login-msg.ok { color: var(--accent); }
 .link { border: 0; background: none; padding: 0; color: var(--accent); cursor: pointer; font-size: inherit; }

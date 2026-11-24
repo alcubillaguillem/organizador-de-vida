@@ -215,6 +215,22 @@ document.addEventListener("DOMContentLoaded", () => {
     const { error } = await sb.auth.signInWithPassword({ email: $("#login-email").value.trim(), password: $("#login-pass").value });
     if (error) $("#login-msg").textContent = "Email o contraseña incorrectos.";
   });
+  const volver = location.origin + location.pathname;
+  const datosLogin = () => ({ email: $("#login-email").value.trim(), password: $("#login-pass").value });
+  const mensaje = (t, ok = false) => { $("#login-msg").textContent = t; $("#login-msg").classList.toggle("ok", ok); };
+  $("#crear-cuenta").addEventListener("click", async () => {
+    const { email, password } = datosLogin();
+    if (!email || password.length < 8) return mensaje("Pon tu email y una contraseña de al menos 8 caracteres.");
+    const { error } = await sb.auth.signUp({ email, password, options: { emailRedirectTo: volver } });
+    mensaje(error ? "No se pudo crear la cuenta. ¿Ya existe? Prueba a entrar o a recuperar la contraseña."
+      : "Cuenta creada. Si te llega un correo de confirmación, ábrelo y vuelve aquí.", !error);
+  });
+  $("#olvido").addEventListener("click", async () => {
+    const { email } = datosLogin();
+    if (!email) return mensaje("Escribe tu email arriba y vuelve a pulsar.");
+    const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: volver });
+    mensaje(error ? "No se pudo enviar el correo. Inténtalo en un minuto." : "Te he enviado un correo para cambiar la contraseña.", !error);
+  });
   $("#salir").addEventListener("click", async () => {
     await sb.auth.signOut();
     habitos = [];
@@ -222,7 +238,15 @@ document.addEventListener("DOMContentLoaded", () => {
     pintar();
   });
   if (sb) {
-    sb.auth.onAuthStateChange((_evento, s) => {
+    sb.auth.onAuthStateChange((evento, s) => {
+      // Al abrir el enlace del correo de recuperación: pide la contraseña nueva.
+      if (evento === "PASSWORD_RECOVERY") setTimeout(async () => {
+        const nueva = prompt("Escribe tu contraseña nueva (mínimo 8 caracteres)");
+        if (nueva && nueva.length >= 8) {
+          const { error } = await sb.auth.updateUser({ password: nueva });
+          aviso(error ? "No se pudo cambiar la contraseña." : "Contraseña cambiada.");
+        }
+      });
       const entra = !sesion && s;
       sesion = s;
       pintarSesion();
