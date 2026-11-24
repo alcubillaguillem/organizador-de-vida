@@ -301,22 +301,29 @@ async function traerResumen() {
   const { data, error } = await sb.from("resumenes").select("fecha,contenido,created_at").order("fecha", { ascending: false }).limit(1);
   const f = !error && data?.[0];
   const r = f && limpiarResumen(f.contenido);
-  const cuerpo = $("#resumen-cuerpo");
   if (!r) return;
   $("#resumen-hora").textContent = `${f.fecha === clave(new Date()) ? "Hoy" : fechaCorta(f.fecha)} · ${hora(f.created_at)}`;
-  const correos = r.correos.map((m) => el("li", { className: m.importante ? "correo importante" : "correo" },
-    el("div", { className: "correo-cab" }, el("strong", { textContent: m.asunto || "(sin asunto)" }), el("small", { textContent: m.de })),
-    el("p", { textContent: m.resumen })));
-  const ev = r.evangelio;
-  cuerpo.replaceChildren(
+  const importantes = r.correos.filter((m) => m.importante).length;
+  const caja = (vista, icono, titulo, detalle) => {
+    const b = el("button", { type: "button", className: "caja" },
+      el("span", { className: "caja-ic", textContent: icono }), el("strong", { textContent: titulo }), el("small", { textContent: detalle }));
+    b.addEventListener("click", () => mostrar(vista));
+    return b;
+  };
+  $("#resumen-cuerpo").replaceChildren(
     r.dia ? el("p", { className: "resumen-dia", textContent: r.dia }) : "",
-    el("div", { className: "label", textContent: `✉️ Correos (${r.correos.length})` }),
-    correos.length ? el("ul", { className: "list" }, ...correos) : el("p", { className: "small muted", textContent: "Nada nuevo." }),
-    ev ? el("details", { className: "evangelio" },
-      el("summary", { textContent: `✝️ Evangelio · ${ev.cita}` }),
-      el("p", { textContent: ev.texto }),
-      ev.reflexion ? el("p", { className: "small muted", textContent: ev.reflexion }) : "",
-      ev.enlace ? el("a", { href: ev.enlace, target: "_blank", rel: "noopener noreferrer", textContent: "Leer en la fuente" }) : "") : "");
+    el("div", { className: "cajas" },
+      caja("correos", "✉️", "Correos", `${r.correos.length} nuevos${importantes ? ` · ${importantes} importantes` : ""}`),
+      r.evangelio ? caja("evangelio", "✝️", "Evangelio del día", r.evangelio.cita) : ""));
+  $("#correos-lista").replaceChildren(...(r.correos.length ? r.correos.map((m) => el("li", { className: m.importante ? "correo importante" : "correo" },
+    el("div", { className: "correo-cab" }, el("strong", { textContent: m.asunto || "(sin asunto)" }), el("small", { textContent: m.de })),
+    el("p", { textContent: m.resumen }))) : [el("li", { className: "empty", textContent: "Nada nuevo." })]));
+  const ev = r.evangelio;
+  $("#ev-cita").textContent = ev?.cita ?? "";
+  $("#ev-texto").textContent = ev?.texto ?? "Hoy no hay Evangelio en el resumen.";
+  $("#ev-reflexion").textContent = ev?.reflexion ?? "";
+  $("#ev-enlace").classList.toggle("hidden", !ev?.enlace);
+  if (ev?.enlace) $("#ev-enlace").href = ev.enlace;
 }
 
 // Avisos push del resumen. En iPhone solo funcionan con la app añadida a la pantalla de inicio.
@@ -408,6 +415,7 @@ function mostrar(vista) {
   document.documentElement.classList.toggle("cal-abierto", vista === "calendario");
   animarVista(document.getElementById(`view-${vista}`));
   if (vista === "calendario") calendario.mostrar();
+  if (vista === "correos" || vista === "evangelio") scrollTo(0, 0);
 }
 const animarVista = (v) => {
   if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
