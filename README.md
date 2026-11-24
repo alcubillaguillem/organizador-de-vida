@@ -1,19 +1,12 @@
 # Organizador de vida
 
-App de iPhone (SwiftUI, iOS 17+). Fase 1: habit tracker local con SwiftData y Swift Charts.
+App web instalable (PWA) para el iPhone y el ordenador. Mismo enfoque que Gastos Erasmus: sin compilación, se sirve tal cual desde GitHub Pages y se añade a la pantalla de inicio.
 
-## Abrir el proyecto
+- `index.html`, `styles.css`, `app.js`: la app.
+- `stats.js`: rachas y porcentajes del habit tracker. Tests: `npm test` (Node 22).
+- `sw.js`, `manifest.webmanifest`, `icons/`: instalación y uso sin conexión.
+- `vendor/fonts/`: Inter y Space Grotesk (licencia SIL OFL), servidas desde la propia app.
 
-El `.xcodeproj` se genera con [XcodeGen](https://github.com/yonaskolb/XcodeGen) y no se sube al repo.
+Los hábitos se guardan solo en este navegador (localStorage). La sincronización entre dispositivos llegará con Supabase.
 
-```sh
-brew install xcodegen
-xcodegen
-open OrganizadorDeVida.xcodeproj
-```
-
-Antes de instalarla en tu iPhone, cambia `com.example.organizadordevida` en `project.yml` por tu propio identificador y elige tu equipo en Xcode (Signing & Capabilities).
-
-## Datos
-
-Todo se guarda en el dispositivo. No hay red, cuentas ni secretos en esta fase.
+Probar en local: `python3 -m http.server` en esta carpeta y abrir http://localhost:8000.
