@@ -141,3 +141,13 @@ select { font: inherit; font-size: 16px; color: var(--text); background: var(--r
 #login-msg { color: var(--danger); min-height: 1em; }
 #login-msg.ok { color: var(--accent); }
 .link { border: 0; background: none; padding: 0; color: var(--accent); cursor: pointer; font-size: inherit; }
+
+/* Tareas */
+#nueva-tarea { margin-bottom: 8px; }
+#tarea-fecha { flex: 0 0 auto; color-scheme: dark; }
+.tarea { display: grid; grid-template-columns: 30px minmax(0, 1fr) 28px; gap: 8px; align-items: center; padding: 10px 0; border-top: 1px solid var(--line); }
+.tarea:first-child { border-top: 0; }
+.tarea .texto small { display: block; color: var(--muted); font-size: 12px; }
+.tarea .texto small:first-letter { text-transform: uppercase; }
+.tarea.hecha .texto { color: var(--muted); text-decoration: line-through; }
+@media (max-width: 520px) { #tarea-fecha { flex: 1; } }

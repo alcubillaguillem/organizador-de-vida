@@ -48,11 +48,24 @@
       <section id="view-inicio" class="view narrow" aria-label="Inicio">
         <header class="view-head"><div><h1 class="title">Hoy</h1><div id="hoy-fecha" class="small muted"></div></div></header>
         <section class="card">
+          <h2>Tareas</h2>
+          <form id="nueva-tarea" class="row">
+            <input id="tarea-texto" placeholder="Nueva tarea" maxlength="120" autocomplete="off" required>
+            <input id="tarea-fecha" type="date" aria-label="Fecha de la tarea">
+            <button type="submit" class="btn primary">Añadir</button>
+          </form>
+          <ul id="tareas-hoy" class="list"></ul>
+          <div id="tareas-prox-wrap" class="hidden">
+            <div class="label">Próximos 7 días</div>
+            <ul id="tareas-prox" class="list"></ul>
+          </div>
+        </section>
+        <section class="card">
           <h2>Hábitos diarios de hoy</h2>
           <div id="hoy-habitos" class="kpi-num">—</div>
           <div id="hoy-semanales" class="small muted"></div>
         </section>
-        <section class="card"><p class="empty">Aquí irán el resumen del correo y las tareas del día.</p></section>
+        <section class="card"><p class="empty">Aquí irá el resumen del correo.</p></section>
         <p class="small muted"><span id="cuenta"></span> <button type="button" id="salir" class="link hidden">Cerrar sesión</button></p>
       </section>
 

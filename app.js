@@ -15,36 +15,58 @@ const valido = (h) =>
   Array.isArray(h.dias) && h.dias.every((d) => FECHA.test(d)) &&
   (h.meta === undefined || (Number.isInteger(h.meta) && h.meta >= 1 && h.meta <= 7));
 
-function cargar() {
+const STORE_T = "organizador.tareas.v1";
+const tareaValida = (t) =>
+  typeof t?.id === "string" && typeof t.texto === "string" && t.texto.length <= 120 &&
+  FECHA.test(t.fecha) && typeof t.hecha === "boolean";
+
+function leer(store, ok) {
   try {
-    const datos = JSON.parse(localStorage.getItem(STORE) || "[]");
-    return Array.isArray(datos) ? datos.filter(valido) : [];
+    const datos = JSON.parse(localStorage.getItem(store) || "[]");
+    return Array.isArray(datos) ? datos.filter(ok) : [];
   } catch { return []; }
 }
 
-let habitos = cargar();
-const guardarLocal = () => localStorage.setItem(STORE, JSON.stringify(habitos));
+let habitos = leer(STORE, valido);
+let tareas = leer(STORE_T, tareaValida);
+const guardarLocal = () => {
+  localStorage.setItem(STORE, JSON.stringify(habitos));
+  localStorage.setItem(STORE_T, JSON.stringify(tareas));
+};
 
-const aFila = (h) => ({ id: h.id, nombre: h.nombre, meta: h.meta ?? null, creado: h.creado, dias: h.dias, updated_at: new Date().toISOString() });
+const ahora = () => new Date().toISOString();
+const aFila = (h) => ({ id: h.id, nombre: h.nombre, meta: h.meta ?? null, creado: h.creado, dias: h.dias, updated_at: ahora() });
 const deFila = (f) => ({ id: f.id, nombre: f.nombre, creado: f.creado, dias: f.dias, ...(f.meta < 7 && { meta: f.meta }) });
+const aFilaT = (t) => ({ id: t.id, texto: t.texto, fecha: t.fecha, hecha: t.hecha, updated_at: ahora() });
 const fallo = (error) => { if (error) aviso("No se pudo sincronizar. Revisa la conexión."); };
 
-/** Guarda un hábito cambiado (o borrado) en local y, si hay sesión, en Supabase. */
-async function guardar(h, borrado = false) {
+/** Guarda en local y, si hay sesión, sube (o borra) esa fila en Supabase. */
+async function sincronizar(tabla, fila, borrado) {
   guardarLocal();
   pintar();
-  if (!sesion || !h) return;
-  const q = sb.from("habitos");
-  const { error } = borrado ? await q.delete().eq("id", h.id) : await q.upsert(aFila(h));
+  if (!sesion) return;
+  const q = sb.from(tabla);
+  const { error } = borrado ? await q.delete().eq("id", fila.id) : await q.upsert(fila);
   fallo(error);
 }
+const guardar = (h, borrado = false) => sincronizar("habitos", aFila(h), borrado);
+const guardarTarea = (t, borrado = false) => sincronizar("tareas", aFilaT(t), borrado);
 
-/** Trae los hábitos del servidor. La primera vez, sube los que ya hubiera en este navegador. */
+/** Trae una tabla del servidor. La primera vez, sube lo que ya hubiera en este navegador. */
+async function traer(tabla, columnas, locales, aServidor) {
+  const { data, error } = await sb.from(tabla).select(columnas).order("created_at");
+  if (error) { fallo(error); return null; }
+  if (!data.length && locales.length) { fallo((await sb.from(tabla).upsert(locales.map(aServidor))).error); return null; }
+  return data;
+}
+
 async function bajar() {
-  const { data, error } = await sb.from("habitos").select("id,nombre,meta,creado,dias").order("created_at");
-  if (error) return fallo(error);
-  if (!data.length && habitos.length) return fallo((await sb.from("habitos").upsert(habitos.map(aFila))).error);
-  habitos = data.map(deFila).filter(valido);
+  const [h, t] = await Promise.all([
+    traer("habitos", "id,nombre,meta,creado,dias", habitos, aFila),
+    traer("tareas", "id,texto,fecha,hecha", tareas, aFilaT),
+  ]);
+  if (h) habitos = h.map(deFila).filter(valido);
+  if (t) tareas = t.filter(tareaValida);
   guardarLocal();
   pintar();
 }
@@ -171,6 +193,30 @@ function pintarDashboard(hoy) {
   )));
 }
 
+const fechaCorta = (k) => desdeClave(k).toLocaleDateString("es-ES", { weekday: "short", day: "numeric", month: "short" });
+
+function filaTarea(t, etiqueta) {
+  const check = el("button", { type: "button", className: "dot", ariaLabel: `Hecha: ${t.texto}` });
+  check.setAttribute("aria-pressed", String(t.hecha));
+  check.addEventListener("click", () => { t.hecha = !t.hecha; guardarTarea(t); });
+  const borrar = el("button", { type: "button", className: "del", ariaLabel: `Borrar ${t.texto}` }, icono("M6 6l12 12M18 6 6 18"));
+  borrar.addEventListener("click", () => { tareas = tareas.filter((x) => x !== t); guardarTarea(t, true); });
+  return el("li", { className: t.hecha ? "tarea hecha" : "tarea" }, check,
+    el("span", { className: "texto", textContent: t.texto }, etiqueta ? el("small", { textContent: etiqueta }) : ""), borrar);
+}
+
+/** Hoy: atrasadas sin hacer, luego las de hoy (las hechas al final). Aparte, las de los próximos 7 días. */
+function pintarTareas(k, hoy) {
+  const atrasadas = tareas.filter((t) => t.fecha < k && !t.hecha).sort((a, b) => a.fecha.localeCompare(b.fecha));
+  const deHoy = tareas.filter((t) => t.fecha === k).sort((a, b) => a.hecha - b.hecha);
+  const limite = clave(sumarDias(hoy, 7));
+  const proximas = tareas.filter((t) => t.fecha > k && t.fecha <= limite && !t.hecha).sort((a, b) => a.fecha.localeCompare(b.fecha));
+  const lista = [...atrasadas.map((t) => filaTarea(t, `Atrasada · ${fechaCorta(t.fecha)}`)), ...deHoy.map((t) => filaTarea(t))];
+  $("#tareas-hoy").replaceChildren(...(lista.length ? lista : [el("li", { className: "empty", textContent: "Nada para hoy." })]));
+  $("#tareas-prox").replaceChildren(...proximas.map((t) => filaTarea(t, fechaCorta(t.fecha))));
+  $("#tareas-prox-wrap").classList.toggle("hidden", !proximas.length);
+}
+
 function pintar() {
   const hoy = new Date();
   const k = clave(hoy);
@@ -180,6 +226,7 @@ function pintar() {
     ? `${diarios.filter((h) => h.dias.includes(k)).length} de ${diarios.length}` : "Sin hábitos diarios";
   $("#hoy-semanales").textContent = semanales.length
     ? `Objetivos semanales cumplidos: ${semanales.filter((h) => hechosSemana(h.dias, hoy) >= h.meta).length} de ${semanales.length}` : "";
+  pintarTareas(k, hoy);
   pintarLista(hoy);
   pintarDashboard(hoy);
 }
@@ -202,6 +249,18 @@ document.addEventListener("DOMContentLoaded", () => {
     habitos.push(h);
     $("#nuevo-nombre").value = "";
     guardar(h);
+  });
+  $("#tarea-fecha").value = clave(new Date());
+  $("#nueva-tarea").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const texto = $("#tarea-texto").value.trim().slice(0, 120);
+    const fecha = FECHA.test($("#tarea-fecha").value) ? $("#tarea-fecha").value : clave(new Date());
+    if (!texto) return;
+    const t = { id: crypto.randomUUID(), texto, fecha, hecha: false };
+    tareas.push(t);
+    $("#tarea-texto").value = "";
+    $("#tarea-fecha").value = clave(new Date());
+    guardarTarea(t);
   });
   // Al volver a la app: repinta con la fecha nueva y trae los cambios del otro dispositivo.
   document.addEventListener("visibilitychange", () => {
@@ -234,6 +293,7 @@ document.addEventListener("DOMContentLoaded", () => {
   $("#salir").addEventListener("click", async () => {
     await sb.auth.signOut();
     habitos = [];
+    tareas = [];
     guardarLocal();
     pintar();
   });
