@@ -201,7 +201,7 @@ async function traerEventos() {
   const { data, error } = await sb.functions.invoke("calendario", {
     body: { desde: desde.toISOString(), hasta: sumarDias(desde, 1).toISOString() },
   });
-  eventos = !error && Array.isArray(data?.eventos) ? data.eventos.filter((e) => typeof e?.titulo === "string") : [];
+  eventos = !error && Array.isArray(data?.eventos) ? data.eventos.filter((e) => typeof e?.titulo === "string" && (e.calendario === undefined || typeof e.calendario === "string")) : [];
   pintar();
 }
 
@@ -209,7 +209,7 @@ const hora = (iso) => new Date(iso).toLocaleTimeString("es-ES", { hour: "2-digit
 function pintarEventos() {
   $("#eventos").replaceChildren(...eventos.map((e) => el("li", { className: "evento" },
     el("span", { className: "cuando", textContent: e.dia ? "Todo el día" : `${hora(e.inicio)}–${hora(e.fin)}` }),
-    el("span", { textContent: e.titulo }))));
+    el("span", { textContent: e.titulo }, e.calendario ? el("small", { textContent: e.calendario }) : ""))));
   $("#eventos-wrap").classList.toggle("hidden", !eventos.length);
 }
 
