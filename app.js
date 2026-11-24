@@ -39,7 +39,8 @@ const guardarLocal = () => {
 
 const ahora = () => new Date().toISOString();
 const aFila = (h) => ({ id: h.id, nombre: h.nombre, meta: h.meta ?? null, creado: h.creado, dias: h.dias, updated_at: ahora() });
-const deFila = (f) => ({ id: f.id, nombre: f.nombre, creado: f.creado, dias: f.dias, ...(f.meta < 7 && { meta: f.meta }) });
+// meta null (o 7) en el servidor = hábito diario: en local no lleva meta.
+const deFila = (f) => ({ id: f.id, nombre: f.nombre, creado: f.creado, dias: f.dias ?? [], ...(Number.isInteger(f.meta) && f.meta < 7 && { meta: f.meta }) });
 const aFilaT = (t) => ({ id: t.id, texto: t.texto, fecha: t.fecha, hecha: t.hecha, categoria: t.categoria ?? null, updated_at: ahora() });
 const fallo = (error) => { if (error) aviso("No se pudo sincronizar. Revisa la conexión."); };
 
