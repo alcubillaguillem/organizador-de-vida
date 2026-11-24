@@ -97,6 +97,7 @@ select { font: inherit; font-size: 16px; color: var(--text); background: var(--r
 .item:first-child { border-top: 0; }
 .item .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; border: 0; background: transparent; padding: 0; text-align: left; cursor: pointer; }
 .item .name small, .tabla small { display: block; color: var(--muted); font-size: 12px; }
+.item .name small { white-space: normal; }
 .item .name small.ok { color: var(--accent); }
 .aviso {
   position: fixed; left: 50%; bottom: calc(var(--tabbar-h) + 16px); transform: translateX(-50%); z-index: 30;

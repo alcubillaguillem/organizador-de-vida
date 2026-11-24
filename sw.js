@@ -1,7 +1,7 @@
 // Service worker: la app abre sin conexión. Red primero para recibir siempre la última versión.
-const CACHE = "organizador-v2";
+const CACHE = "organizador-v3";
 const ASSETS = [
-  "./", "index.html", "styles.css", "app.js", "stats.js", "manifest.webmanifest",
+  "./", "index.html", "styles.css", "app.js", "stats.js", "emoji.js", "manifest.webmanifest",
   "vendor/fonts/inter-latin.woff2", "vendor/fonts/space-grotesk-latin.woff2",
   "icons/icon.svg", "icons/icon-192.png", "icons/apple-touch-icon.png",
 ];
