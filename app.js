@@ -196,15 +196,21 @@ function pintarDashboard(hoy) {
   )));
 }
 
-// Eventos de Google Calendar de hoy (función "calendario" de Supabase, slug quick-handler). Solo en memoria.
+// Google Calendar, a través de la función "calendario" de Supabase (slug quick-handler) y tu Apps Script.
+const google = (body) => sb.functions.invoke("quick-handler", { body });
+const eventoValido = (e) =>
+  typeof e?.titulo === "string" && (e.calendario === undefined || typeof e.calendario === "string") &&
+  (e.id === undefined || typeof e.id === "string") && (e.cal === undefined || typeof e.cal === "string") &&
+  (e.dia ? FECHA.test(e.dia) && (e.diaFin === undefined || FECHA.test(e.diaFin))
+    : !isNaN(Date.parse(e.inicio)) && !isNaN(Date.parse(e.fin)));
+
+// Eventos de hoy para Inicio. Solo en memoria.
 let eventos = [];
 async function traerEventos() {
   const hoy = new Date();
   const desde = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
-  const { data, error } = await sb.functions.invoke("quick-handler", {
-    body: { desde: desde.toISOString(), hasta: sumarDias(desde, 1).toISOString() },
-  });
-  eventos = !error && Array.isArray(data?.eventos) ? data.eventos.filter((e) => typeof e?.titulo === "string" && (e.calendario === undefined || typeof e.calendario === "string")) : [];
+  const { data, error } = await google({ accion: "listar", desde: desde.toISOString(), hasta: sumarDias(desde, 1).toISOString() });
+  eventos = !error && Array.isArray(data?.eventos) ? data.eventos.filter(eventoValido) : [];
   pintar();
 }
 
@@ -266,10 +272,6 @@ function pintar() {
 const cal = { modo: "mes", fecha: new Date(), meses: new Map(), cargando: new Set(), error: false };
 const HORA_PX = 44;
 const MESES_TXT = (d, o) => d.toLocaleDateString("es-ES", o);
-const eventoValido = (e) =>
-  typeof e?.titulo === "string" && (e.calendario === undefined || typeof e.calendario === "string") &&
-  (e.dia ? FECHA.test(e.dia) && (e.diaFin === undefined || FECHA.test(e.diaFin))
-    : !isNaN(Date.parse(e.inicio)) && !isNaN(Date.parse(e.fin)));
 const claveMes = (d) => clave(d).slice(0, 7);
 
 async function cargarMes(d) {
@@ -278,9 +280,7 @@ async function cargarMes(d) {
   cal.cargando.add(km);
   pintarEstado();
   const r = rejillaMes(d);
-  const { data, error } = await sb.functions.invoke("quick-handler", {
-    body: { desde: r[0].toISOString(), hasta: sumarDias(r[41], 1).toISOString() },
-  });
+  const { data, error } = await google({ accion: "listar", desde: r[0].toISOString(), hasta: sumarDias(r[41], 1).toISOString() });
   cal.cargando.delete(km);
   cal.error = !!error;
   if (!error && Array.isArray(data?.eventos)) cal.meses.set(km, data.eventos.filter(eventoValido));
@@ -330,10 +330,14 @@ function vistaHoras(dias, scroll) {
   }));
   const conTodoDia = datos.some((x) => x.todoDia.length);
   const todoDia = el("div", { className: `h-todo${conTodoDia ? "" : " hidden"}` }, el("span", { className: "h-lbl", textContent: "Todo el día" }),
-    ...datos.map((x) => el("div", {}, ...x.todoDia.map((e) => chip(e)))));
+    ...datos.map((x) => el("div", {}, ...x.todoDia.map((e) => {
+      const c = chip(e);
+      if (!semana) c.addEventListener("click", () => abrirEvento(e));
+      return c;
+    }))));
   const horas = el("div", { className: "h-horas" }, ...Array.from({ length: 24 }, (_, h) => el("span", { textContent: h ? `${String(h).padStart(2, "0")}:00` : "" })));
   const cols = datos.map(({ d, k, conHora }) => {
-    const col = el("div", { className: `h-col${k === hoy ? " hoy" : ""}` }, ...conHora.map((e) => {
+    const col = el("div", { className: `h-col${k === hoy ? " hoy" : ""}` }, ...conHora.map((e, i) => {
       const b = el("div", { className: "bloque" }, el("b", { textContent: e.titulo }),
         el("small", { textContent: `${hora(e.inicio)}–${hora(e.fin)}` }));
       b.style.setProperty("--c", colorDe(e));
@@ -341,6 +345,7 @@ function vistaHoras(dias, scroll) {
       b.style.height = `${Math.max(((e.hasta - e.desde) / 60) * HORA_PX - 2, 18)}px`;
       b.style.left = `${(e.col / e.cols) * 100}%`;
       b.style.width = `calc(${100 / e.cols}% - 2px)`;
+      b.dataset.i = i;
       return b;
     }));
     if (k === hoy) {
@@ -349,6 +354,12 @@ function vistaHoras(dias, scroll) {
       col.append(linea);
     }
     if (semana) col.addEventListener("click", () => irA("dia", d, col));
+    else col.addEventListener("click", (ev) => {
+      const bloque = ev.target.closest(".bloque");
+      if (bloque) return abrirEvento(conHora[bloque.dataset.i]);
+      const h = Math.min(Math.floor((ev.clientY - col.getBoundingClientRect().top) / HORA_PX), 23);
+      abrirEvento(null, new Date(d.getFullYear(), d.getMonth(), d.getDate(), h));
+    });
     return col;
   });
   const cuerpo = el("div", { className: "h-scroll" }, el("div", { className: "h-cuerpo" }, horas, ...cols));
@@ -406,6 +417,72 @@ function irA(modo, fecha, origen) {
   c.classList.add(anim);
 }
 
+// ---- Crear, editar y borrar eventos de Google Calendar ----
+let calendarios = null, editando = null;
+const horaTxt = (d) => `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+const enFecha = (k, hhmm) => { const [h, m] = hhmm.split(":").map(Number); const d = desdeClave(k); d.setHours(h, m); return d; };
+
+async function cargarCalendarios() {
+  if (calendarios) return;
+  const { data, error } = await google({ accion: "calendarios" });
+  if (error || !Array.isArray(data?.calendarios)) throw new Error();
+  const orden = (c) => { const i = CATEGORIAS.findIndex((x) => x.id === categoriaDe(c.nombre).id); return i < 0 ? 99 : i; };
+  calendarios = data.calendarios.filter((c) => typeof c?.id === "string" && typeof c.nombre === "string").sort((a, b) => orden(a) - orden(b));
+  $("#ev-cal").replaceChildren(...calendarios.map((c) => el("option", { value: c.id, textContent: `${categoriaDe(c.nombre).emoji} ${c.nombre}` })));
+}
+
+/** Abre el formulario: con un evento para editarlo, o vacío (a la hora `cuando`) para crear uno. */
+async function abrirEvento(e, cuando) {
+  if (!sesion) return aviso("Inicia sesión para usar el calendario.");
+  editando = e && e.id && e.cal ? e : null;
+  if (e && !editando) return aviso("Este evento no se puede editar desde aquí.");
+  const ini = e ? (e.dia ? desdeClave(e.dia) : new Date(e.inicio)) : cuando ?? new Date(cal.fecha.getFullYear(), cal.fecha.getMonth(), cal.fecha.getDate(), new Date().getHours() + 1);
+  const fin = e && !e.dia ? new Date(e.fin) : new Date(ini.getTime() + 3600000);
+  $("#ev-tit").textContent = e ? "Editar evento" : "Nuevo evento";
+  $("#ev-titulo").value = e?.titulo ?? "";
+  $("#ev-todo").checked = !!e?.dia;
+  $("#ev-fecha").value = clave(ini);
+  $("#ev-ini").value = horaTxt(ini);
+  $("#ev-fin").value = horaTxt(fin);
+  $("#ev-borrar").classList.toggle("hidden", !editando);
+  $("#ev-msg").textContent = "";
+  ajustarTodoDia();
+  $("#ev-dlg").showModal();
+  try {
+    await cargarCalendarios();
+    $("#ev-cal").value = editando?.cal ?? calendarios[0]?.id ?? "";
+    $("#ev-cal").disabled = !!editando; // Cambiar de calendario no está soportado: se borra y se crea de nuevo.
+  } catch { $("#ev-msg").textContent = "No se pudo conectar con Google Calendar."; }
+}
+const ajustarTodoDia = () => { for (const i of ["#ev-ini", "#ev-fin"]) $(i).classList.toggle("hidden", $("#ev-todo").checked); };
+
+async function enviarEvento(accion) {
+  const k = $("#ev-fecha").value, titulo = $("#ev-titulo").value.trim().slice(0, 200);
+  const p = { accion, cal: $("#ev-cal").value };
+  if (accion !== "borrar") {
+    if (!titulo || !FECHA.test(k)) return;
+    p.titulo = titulo;
+    if ($("#ev-todo").checked) {
+      const dias = editando?.dia && editando.diaFin ? Math.max(1, Math.round((desdeClave(editando.diaFin) - desdeClave(editando.dia)) / 86400000)) : 1;
+      Object.assign(p, { dia: k, diaFin: clave(sumarDias(desdeClave(k), dias)) });
+    } else {
+      const i = enFecha(k, $("#ev-ini").value || "09:00");
+      let f = enFecha(k, $("#ev-fin").value || "10:00");
+      if (f <= i) f = sumarDias(f, 1); // termina pasada la medianoche
+      Object.assign(p, { inicio: i.toISOString(), fin: f.toISOString() });
+    }
+  }
+  if (editando) Object.assign(p, { id: editando.id, original: editando.dia ?? editando.inicio });
+  $("#ev-msg").textContent = "Guardando…";
+  const { data, error } = await google(p);
+  if (error || data?.error) return ($("#ev-msg").textContent = "No se pudo guardar en Google Calendar. Inténtalo de nuevo.");
+  $("#ev-dlg").close();
+  aviso(accion === "borrar" ? "Evento borrado" : "Evento guardado");
+  cal.meses.clear();
+  pintarCal();
+  traerEventos();
+}
+
 function mostrar(vista) {
   for (const v of document.querySelectorAll(".view")) v.classList.toggle("hidden", v.id !== `view-${vista}`);
   for (const b of document.querySelectorAll("[data-view]")) {
@@ -430,6 +507,11 @@ document.addEventListener("DOMContentLoaded", () => {
   $("#cal-prev").addEventListener("click", () => irA(cal.modo, mover(cal.modo, cal.fecha, -1)));
   $("#cal-next").addEventListener("click", () => irA(cal.modo, mover(cal.modo, cal.fecha, 1)));
   $("#cal-hoy").addEventListener("click", () => irA(cal.modo, new Date()));
+  $("#cal-nuevo").addEventListener("click", () => abrirEvento(null));
+  $("#ev-todo").addEventListener("change", ajustarTodoDia);
+  $("#ev-cancelar").addEventListener("click", () => $("#ev-dlg").close());
+  $("#ev-borrar").addEventListener("click", () => { if (confirm(`¿Borrar «${editando.titulo}» de Google Calendar?`)) enviarEvento("borrar"); });
+  $("#ev-form").addEventListener("submit", (e) => { e.preventDefault(); enviarEvento(editando ? "editar" : "crear"); });
   // Deslizar a los lados cambia de mes, semana o día.
   let toque = null;
   $("#cal").addEventListener("touchstart", (e) => { toque = e.touches[0]; }, { passive: true });
@@ -453,6 +535,11 @@ document.addEventListener("DOMContentLoaded", () => {
   $("#cal-prev").addEventListener("click", () => irA(cal.modo, mover(cal.modo, cal.fecha, -1)));
   $("#cal-next").addEventListener("click", () => irA(cal.modo, mover(cal.modo, cal.fecha, 1)));
   $("#cal-hoy").addEventListener("click", () => irA(cal.modo, new Date()));
+  $("#cal-nuevo").addEventListener("click", () => abrirEvento(null));
+  $("#ev-todo").addEventListener("change", ajustarTodoDia);
+  $("#ev-cancelar").addEventListener("click", () => $("#ev-dlg").close());
+  $("#ev-borrar").addEventListener("click", () => { if (confirm(`¿Borrar «${editando.titulo}» de Google Calendar?`)) enviarEvento("borrar"); });
+  $("#ev-form").addEventListener("submit", (e) => { e.preventDefault(); enviarEvento(editando ? "editar" : "crear"); });
   // Deslizar a los lados cambia de mes, semana o día.
   let toque = null;
   $("#cal").addEventListener("touchstart", (e) => { toque = e.touches[0]; }, { passive: true });
