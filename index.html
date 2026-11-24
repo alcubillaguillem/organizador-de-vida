@@ -48,7 +48,12 @@
       <section id="view-inicio" class="view narrow" aria-label="Inicio">
         <header class="view-head"><div><h1 class="title">Hoy</h1><div id="hoy-fecha" class="small muted"></div></div></header>
         <section class="card">
-          <h2>Tareas</h2>
+          <h2>Agenda</h2>
+          <div id="eventos-wrap" class="hidden">
+            <div class="label">📅 Calendario</div>
+            <ul id="eventos" class="list"></ul>
+            <div class="label">Tareas</div>
+          </div>
           <form id="nueva-tarea" class="row">
             <input id="tarea-texto" placeholder="Nueva tarea" maxlength="120" autocomplete="off" required>
             <input id="tarea-fecha" type="date" aria-label="Fecha de la tarea">
