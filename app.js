@@ -1,4 +1,4 @@
-import { clave, desdeClave, sumarDias, ultimosDias, rachaActual, mejorRacha, tasaSemanal, tasaDia } from "./stats.js";
+import { clave, desdeClave, sumarDias, ultimosDias, tasaSemanal, tasaDia, esDiario, hechosSemana, racha, mejor } from "./stats.js";
 
 // Datos: solo en este navegador (localStorage). La sincronización llegará con Supabase.
 const STORE = "organizador.habitos.v1";
@@ -11,7 +11,8 @@ function cargar() {
     // Valida lo leído: descarta cualquier cosa que no tenga la forma esperada.
     return Array.isArray(datos) ? datos.filter((h) =>
       typeof h?.id === "string" && typeof h.nombre === "string" && fecha.test(h.creado) &&
-      Array.isArray(h.dias) && h.dias.every((d) => fecha.test(d))) : [];
+      Array.isArray(h.dias) && h.dias.every((d) => fecha.test(d)) &&
+      (h.meta === undefined || (Number.isInteger(h.meta) && h.meta >= 1 && h.meta <= 7))) : [];
   } catch { return []; }
 }
 
@@ -42,6 +43,34 @@ const media = (dias) => {
   return tasas.length ? tasas.reduce((a, b) => a + b, 0) / tasas.length : null;
 };
 const LETRAS = ["D", "L", "M", "X", "J", "V", "S"];
+const frecuencia = (h) => (esDiario(h) ? "Cada día" : `${h.meta} ${h.meta === 1 ? "vez" : "veces"} por semana`);
+
+/** Texto bajo el nombre: racha y, en los semanales, el progreso de la semana. */
+function detalle(h, hoy) {
+  const r = racha(h, hoy);
+  if (esDiario(h)) return `Cada día · Racha ${r} ${r === 1 ? "día" : "días"}`;
+  const n = hechosSemana(h.dias, hoy);
+  const semana = n >= h.meta ? "Semana cumplida ✓" : `${n} de ${h.meta} esta semana`;
+  return `${semana} · Racha ${r} ${r === 1 ? "semana" : "semanas"}`;
+}
+
+let avisoTimer;
+function aviso(texto) {
+  const t = $("#aviso");
+  t.textContent = texto;
+  t.classList.remove("hidden");
+  clearTimeout(avisoTimer);
+  avisoTimer = setTimeout(() => t.classList.add("hidden"), 2500);
+}
+
+function cambiarFrecuencia(h) {
+  const r = prompt(`¿Cuántas veces por semana quieres hacer «${h.nombre}»? (1 a 7; 7 = cada día)`, h.meta ?? 7);
+  if (r === null) return;
+  const n = Number(r);
+  if (!Number.isInteger(n) || n < 1 || n > 7) return aviso("Pon un número del 1 al 7.");
+  h.meta = n;
+  guardar();
+}
 
 function pintarLista(hoy) {
   const semana = ultimosDias(7, hoy);
@@ -49,7 +78,12 @@ function pintarLista(hoy) {
   $("#semana").classList.toggle("hidden", !habitos.length);
 
   $("#lista").replaceChildren(...(habitos.length ? habitos.map((h) => el("li", { className: "item" },
-    el("span", { className: "name", textContent: h.nombre }, el("small", { textContent: `Racha ${rachaActual(h.dias, hoy)}` })),
+    (() => {
+      const b = el("button", { type: "button", className: "name", title: "Cambiar frecuencia", textContent: h.nombre },
+        el("small", { className: !esDiario(h) && hechosSemana(h.dias, hoy) >= h.meta ? "ok" : "", textContent: detalle(h, hoy) }));
+      b.addEventListener("click", () => cambiarFrecuencia(h));
+      return b;
+    })(),
     ...semana.map((k) => {
       const b = el("button", {
         type: "button", className: k === clave(hoy) ? "dot today" : "dot",
@@ -57,8 +91,10 @@ function pintarLista(hoy) {
       });
       b.setAttribute("aria-pressed", String(h.dias.includes(k)));
       b.addEventListener("click", () => {
+        const antes = hechosSemana(h.dias, hoy);
         h.dias = h.dias.includes(k) ? h.dias.filter((d) => d !== k) : [...h.dias, k];
         guardar();
+        if (!esDiario(h) && antes < h.meta && hechosSemana(h.dias, hoy) >= h.meta) aviso(`¡${h.nombre}: semana cumplida!`);
       });
       return b;
     }),
@@ -77,6 +113,9 @@ function pintarDashboard(hoy) {
   $("#k-hoy").textContent = pct(tasaDia(habitos, k));
   $("#k-semana").textContent = pct(media(ultimosDias(7, hoy)));
   $("#k-mes").textContent = pct(media(ultimosDias(30, hoy)));
+  const semanales = habitos.filter((h) => !esDiario(h));
+  $("#k-sem").textContent = semanales.length
+    ? `${semanales.filter((h) => hechosSemana(h.dias, hoy) >= h.meta).length} de ${semanales.length}` : "—";
 
   // 12 semanas completas de lunes a domingo; los días futuros quedan vacíos.
   const lunes = sumarDias(hoy, -((hoy.getDay() + 6) % 7) - 77);
@@ -87,9 +126,9 @@ function pintarDashboard(hoy) {
   }));
 
   $("#tabla").replaceChildren(...habitos.map((h) => el("tr", {},
-    el("td", { textContent: h.nombre }),
-    el("td", { textContent: rachaActual(h.dias, hoy) }),
-    el("td", { textContent: mejorRacha(h.dias) }),
+    el("td", {}, h.nombre, el("small", { textContent: frecuencia(h) })),
+    el("td", { textContent: `${racha(h, hoy)} ${esDiario(h) ? "d" : "sem"}` }),
+    el("td", { textContent: `${mejor(h)} ${esDiario(h) ? "d" : "sem"}` }),
     el("td", { textContent: pct(tasaSemanal(h, hoy)) }),
   )));
 }
@@ -98,8 +137,11 @@ function pintar() {
   const hoy = new Date();
   const k = clave(hoy);
   $("#hoy-fecha").textContent = hoy.toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" });
-  $("#hoy-habitos").textContent = habitos.length
-    ? `${habitos.filter((h) => h.dias.includes(k)).length} de ${habitos.length}` : "Sin hábitos";
+  const diarios = habitos.filter(esDiario), semanales = habitos.filter((h) => !esDiario(h));
+  $("#hoy-habitos").textContent = diarios.length
+    ? `${diarios.filter((h) => h.dias.includes(k)).length} de ${diarios.length}` : "Sin hábitos diarios";
+  $("#hoy-semanales").textContent = semanales.length
+    ? `Objetivos semanales cumplidos: ${semanales.filter((h) => hechosSemana(h.dias, hoy) >= h.meta).length} de ${semanales.length}` : "";
   pintarLista(hoy);
   pintarDashboard(hoy);
 }
@@ -117,7 +159,8 @@ document.addEventListener("DOMContentLoaded", () => {
     e.preventDefault();
     const nombre = $("#nuevo-nombre").value.trim().slice(0, 60);
     if (!nombre) return;
-    habitos.push({ id: crypto.randomUUID(), nombre, creado: clave(new Date()), dias: [] });
+    const meta = Number($("#nuevo-meta").value);
+    habitos.push({ id: crypto.randomUUID(), nombre, creado: clave(new Date()), dias: [], ...(meta < 7 && { meta }) });
     $("#nuevo-nombre").value = "";
     guardar();
   });

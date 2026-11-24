@@ -1,5 +1,5 @@
 // Service worker: la app abre sin conexión. Red primero para recibir siempre la última versión.
-const CACHE = "organizador-v1";
+const CACHE = "organizador-v2";
 const ASSETS = [
   "./", "index.html", "styles.css", "app.js", "stats.js", "manifest.webmanifest",
   "vendor/fonts/inter-latin.woff2", "vendor/fonts/space-grotesk-latin.woff2",
