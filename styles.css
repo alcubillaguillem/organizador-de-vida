@@ -433,3 +433,15 @@ html.cal-abierto, html.cal-abierto body { overflow: hidden; overscroll-behavior:
 .r-barra i { display: block; height: 100%; width: calc(var(--p) * 100%); border-radius: 3px; background: var(--accent); transition: width .5s cubic-bezier(.2, .8, .2, 1); }
 .r-pie { font-size: 12px; color: var(--muted); }
 @media (prefers-reduced-motion: reduce) { .hab-check.pop { animation: none; } }
+
+/* Resumen de la mañana */
+.resumen-dia { margin: 0 0 4px; line-height: 1.5; }
+.correo { padding: 10px 0; border-bottom: 1px solid var(--line, rgba(255,255,255,.08)); }
+.correo:last-child { border-bottom: 0; }
+.correo-cab { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.correo-cab small { color: var(--muted); flex-shrink: 0; }
+.correo p { margin: 4px 0 0; font-size: 14px; color: var(--muted); }
+.correo.importante strong::before { content: "● "; color: var(--accent, #c5f04a); }
+.evangelio { margin-top: 14px; }
+.evangelio summary { cursor: pointer; font-weight: 600; }
+.evangelio p { line-height: 1.6; white-space: pre-line; }
