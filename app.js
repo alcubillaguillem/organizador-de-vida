@@ -82,6 +82,7 @@ function pintarSesion() {
   $(".shell").classList.toggle("hidden", conLogin);
   $("#cuenta").textContent = sesion ? `Sincronizado: ${sesion.user.email}` : "Modo local (solo este navegador)";
   $("#salir").classList.toggle("hidden", !sesion);
+  pintarAvisos().catch(() => {});
 }
 
 /** Crea un elemento. El texto siempre va por textContent, nunca como HTML. */
@@ -318,6 +319,33 @@ async function traerResumen() {
       ev.enlace ? el("a", { href: ev.enlace, target: "_blank", rel: "noopener noreferrer", textContent: "Leer en la fuente" }) : "") : "");
 }
 
+// Avisos push del resumen. En iPhone solo funcionan con la app añadida a la pantalla de inicio.
+const b64 = (s) => Uint8Array.from(atob(s.replace(/-/g, "+").replace(/_/g, "/")), (c) => c.charCodeAt(0));
+async function pintarAvisos() {
+  const btn = $("#activar-avisos");
+  const posible = sesion && cfg.vapidPublica && "PushManager" in window && "serviceWorker" in navigator;
+  const reg = posible && await navigator.serviceWorker.ready;
+  const sub = reg && await reg.pushManager.getSubscription();
+  btn.classList.toggle("hidden", !posible || (sub && Notification.permission === "granted"));
+}
+async function activarAvisos() {
+  try {
+    if (await Notification.requestPermission() !== "granted") { aviso("Sin permiso no puedo avisarte. Actívalo en Ajustes."); return; }
+    const reg = await navigator.serviceWorker.ready;
+    const sub = (await reg.pushManager.getSubscription()) ??
+      await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64(cfg.vapidPublica) });
+    const j = sub.toJSON();
+    const { error } = await sb.from("avisos_push").upsert({ endpoint: j.endpoint, p256dh: j.keys.p256dh, auth: j.keys.auth });
+    aviso(error ? "No se pudieron activar los avisos." : "Listo: te avisaré cada mañana.");
+  } catch { aviso("Este navegador no admite avisos. En iPhone, abre la app desde la pantalla de inicio."); }
+  pintarAvisos();
+}
+function irAResumen() {
+  mostrar("inicio");
+  if (sesion) traerResumen();
+  $("#resumen").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
 const hora = (iso) => new Date(iso).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });
 function pintarEventos() {
   $("#eventos").replaceChildren(...agrupar(eventos, (e) => e.calendario).map((g) => el("li", { className: "grupo" },
@@ -462,5 +490,11 @@ document.addEventListener("DOMContentLoaded", () => {
   } else pintarSesion();
   mostrar("inicio");
   pintar();
-  if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("sw.js").catch(() => {});
+    navigator.serviceWorker.addEventListener("message", (e) => { if (e.data?.abrir === "resumen") irAResumen(); });
+  }
+  $("#activar-avisos").addEventListener("click", activarAvisos);
+  addEventListener("hashchange", () => { if (location.hash === "#resumen") irAResumen(); });
+  if (location.hash === "#resumen") setTimeout(irAResumen, 300);
 });

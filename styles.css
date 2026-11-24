@@ -439,9 +439,11 @@ html.cal-abierto, html.cal-abierto body { overflow: hidden; overscroll-behavior:
 .correo { padding: 10px 0; border-bottom: 1px solid var(--line, rgba(255,255,255,.08)); }
 .correo:last-child { border-bottom: 0; }
 .correo-cab { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
-.correo-cab small { color: var(--muted); flex-shrink: 0; }
+.correo-cab small { color: var(--muted); max-width: 45%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .correo p { margin: 4px 0 0; font-size: 14px; color: var(--muted); }
 .correo.importante strong::before { content: "● "; color: var(--accent, #c5f04a); }
 .evangelio { margin-top: 14px; }
 .evangelio summary { cursor: pointer; font-weight: 600; }
 .evangelio p { line-height: 1.6; white-space: pre-line; }
+#activar-avisos { margin: 0 0 12px; }
+#resumen { scroll-margin-top: 16px; }
