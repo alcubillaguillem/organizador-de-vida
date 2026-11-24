@@ -116,6 +116,7 @@
             <button type="button" id="cal-prev" class="btn" aria-label="Anterior">‹</button>
             <button type="button" id="cal-hoy" class="btn">Hoy</button>
             <button type="button" id="cal-next" class="btn" aria-label="Siguiente">›</button>
+            <button type="button" id="cal-nuevo" class="btn primary" aria-label="Nuevo evento">+</button>
           </div>
         </header>
         <div class="seg" role="group" aria-label="Vista">
@@ -126,6 +127,26 @@
         <div class="card cal-card"><div id="cal" class="cal"></div></div>
       </section>
     </main>
+
+    <dialog id="ev-dlg" class="dlg" aria-labelledby="ev-tit">
+      <form id="ev-form" class="dlg-form">
+        <h2 id="ev-tit">Nuevo evento</h2>
+        <input id="ev-titulo" placeholder="Título" maxlength="200" autocomplete="off" required>
+        <select id="ev-cal" aria-label="Calendario" required></select>
+        <label class="check"><input type="checkbox" id="ev-todo"> Todo el día</label>
+        <div class="ev-cuando">
+          <input id="ev-fecha" type="date" aria-label="Fecha" required>
+          <input id="ev-ini" type="time" aria-label="Hora de inicio">
+          <input id="ev-fin" type="time" aria-label="Hora de fin">
+        </div>
+        <p id="ev-msg" class="small" role="alert"></p>
+        <div class="dlg-botones">
+          <button type="button" id="ev-borrar" class="btn peligro">Borrar</button>
+          <button type="button" id="ev-cancelar" class="btn">Cancelar</button>
+          <button type="submit" class="btn primary">Guardar</button>
+        </div>
+      </form>
+    </dialog>
 
     <div id="aviso" class="aviso hidden" role="status" aria-live="polite"></div>
 

@@ -1,8 +1,8 @@
-// Función "calendario": devuelve los eventos de Google Calendar de un rango de fechas.
-// Lee los enlaces iCal secretos (CALENDARIO_ICAL_URL, separados por espacios) y solo responde a su dueño (CALENDARIO_USER_ID).
-import ICAL from "npm:ical.js@2.1.0";
+// Función "calendario" (slug quick-handler): puente entre la app y tu Google Calendar.
+// Solo responde a su dueño (CALENDARIO_USER_ID). Reenvía la petición, ya validada, a tu Apps Script
+// (GOOGLE_SCRIPT_URL) junto con la clave secreta (GOOGLE_SCRIPT_CLAVE), que nunca llega al navegador.
 import { createClient } from "npm:@supabase/supabase-js@2.117.3";
-import { eventosEntre, ordenar } from "./eventos.js";
+import { validar } from "./validar.js";
 
 const cors = {
   "Access-Control-Allow-Origin": "https://alcubillaguillem.github.io",
@@ -21,21 +21,18 @@ Deno.serve(async (req) => {
   const { data } = await sb.auth.getUser(token);
   if (!data.user || data.user.id !== Deno.env.get("CALENDARIO_USER_ID")) return json({ error: "no autorizado" }, 403);
 
-  const { desde, hasta } = await req.json().catch(() => ({}));
-  const ini = new Date(desde), fin = new Date(hasta);
-  const dias = (fin.getTime() - ini.getTime()) / 86400000;
-  if (!(dias > 0 && dias <= 45)) return json({ error: "rango no válido" }, 400);
+  const p = validar(await req.json().catch(() => null));
+  if (!p) return json({ error: "petición no válida" }, 400);
 
-  const urls = (Deno.env.get("CALENDARIO_ICAL_URL") ?? "").split(/[\s,]+/).filter(Boolean);
-  if (!urls.length || !urls.every((u) => u.startsWith("https://calendar.google.com/"))) {
+  const url = Deno.env.get("GOOGLE_SCRIPT_URL") ?? "", clave = Deno.env.get("GOOGLE_SCRIPT_CLAVE") ?? "";
+  if (!url.startsWith("https://script.google.com/macros/s/") || clave.length < 32) {
     return json({ error: "calendario no configurado" }, 500);
   }
-  // Si un calendario falla, se muestran los demás.
-  const listas = await Promise.all(urls.slice(0, 20).map(async (u) => {
-    try {
-      const res = await fetch(u);
-      return res.ok ? eventosEntre(ICAL, await res.text(), ini, fin) : [];
-    } catch { return []; }
-  }));
-  return json({ eventos: ordenar(listas.flat()) });
+  try {
+    const res = await fetch(url, { method: "POST", body: JSON.stringify({ ...p, clave }), redirect: "follow" });
+    const r = await res.json();
+    return json(r, r?.error ? 502 : 200);
+  } catch {
+    return json({ error: "Google no responde" }, 502);
+  }
 });

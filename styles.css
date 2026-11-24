@@ -226,7 +226,7 @@ select { font: inherit; font-size: 16px; color: var(--text); background: var(--r
   position: relative; border-left: 1px solid var(--line); cursor: pointer;
   background: repeating-linear-gradient(to bottom, transparent 0 calc(var(--hora) - 1px), var(--line) calc(var(--hora) - 1px) var(--hora));
 }
-.horas.uno .h-col { cursor: default; }
+
 .h-col.hoy { background-color: rgba(197, 240, 74, .03); }
 .bloque { position: absolute; border-radius: 6px; padding: 2px 4px; overflow: hidden; font-size: 11px; line-height: 1.25; }
 .bloque b { display: block; font-weight: 600; overflow: hidden; text-overflow: ellipsis; }
@@ -244,3 +244,23 @@ select { font: inherit; font-size: 16px; color: var(--text); background: var(--r
 }
 .horas > .list { margin: 0 8px 8px; }
 .horas > .label { margin: 16px 8px 4px; }
+
+/* Formulario de evento */
+.dlg { width: min(100% - 32px, 420px); padding: 0; border: 1px solid var(--line); border-radius: var(--radius); background: var(--card); color: var(--text); }
+.dlg::backdrop { background: rgba(0, 0, 0, .6); -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); }
+.dlg[open] { animation: dlg-entra .22s cubic-bezier(.2, .8, .2, 1); }
+@keyframes dlg-entra { from { opacity: 0; transform: translateY(16px) scale(.97); } }
+.dlg-form { display: flex; flex-direction: column; gap: 10px; padding: 20px; }
+.dlg-form h2 { margin: 0 0 4px; font-size: 18px; }
+.dlg-form select { height: 48px; }
+.dlg-form select:disabled { opacity: .6; }
+.check { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+.check input { width: 18px; height: 18px; accent-color: var(--accent); }
+.ev-cuando { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; }
+.ev-cuando input { color-scheme: dark; }
+#ev-msg { margin: 0; min-height: 1em; color: var(--muted); }
+.dlg-botones { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+.dlg-botones .peligro { margin-right: auto; color: var(--danger); }
+@media (max-width: 520px) { .ev-cuando { grid-template-columns: 1fr 1fr; } .ev-cuando #ev-fecha { grid-column: 1 / -1; } }
+.horas.uno .h-col { cursor: copy; }
+.horas.uno .bloque, .horas.uno .h-todo .chip { cursor: pointer; }
