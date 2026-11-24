@@ -1,15 +1,15 @@
 // Categorías de la agenda. Coinciden con los calendarios de Google: el evento se asigna
 // por el nombre de su calendario (sin mayúsculas ni tildes). En este orden se muestran.
 export const CATEGORIAS = [
-  { id: "importante", nombre: "Importante", emoji: "❗" },
-  { id: "clases", nombre: "Clases", emoji: "🎓" },
-  { id: "deportes", nombre: "Deportes", emoji: "🏋️" },
-  { id: "espiritualidad", nombre: "Espiritualidad", emoji: "🙏" },
-  { id: "semper", nombre: "Semper", emoji: "⛪" },
-  { id: "viajes", nombre: "Viajes", emoji: "✈️" },
-  { id: "ocio", nombre: "Ocio", emoji: "🎉" },
+  { id: "importante", nombre: "Importante", emoji: "❗", color: "#f87171" },
+  { id: "clases", nombre: "Clases", emoji: "🎓", color: "#60a5fa" },
+  { id: "deportes", nombre: "Deportes", emoji: "🏋️", color: "#fb923c" },
+  { id: "espiritualidad", nombre: "Espiritualidad", emoji: "🙏", color: "#a78bfa" },
+  { id: "semper", nombre: "Semper", emoji: "⛪", color: "#facc15" },
+  { id: "viajes", nombre: "Viajes", emoji: "✈️", color: "#2dd4bf" },
+  { id: "ocio", nombre: "Ocio", emoji: "🎉", color: "#f472b6" },
 ];
-const OTRA = { id: "otros", nombre: "Otros", emoji: "📅" };
+const OTRA = { id: "otros", nombre: "Otros", emoji: "📅", color: "#9a9aa3" };
 
 const normalizar = (t) => String(t ?? "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
 

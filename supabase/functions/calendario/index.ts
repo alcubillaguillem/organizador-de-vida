@@ -24,7 +24,7 @@ Deno.serve(async (req) => {
   const { desde, hasta } = await req.json().catch(() => ({}));
   const ini = new Date(desde), fin = new Date(hasta);
   const dias = (fin.getTime() - ini.getTime()) / 86400000;
-  if (!(dias > 0 && dias <= 8)) return json({ error: "rango no válido" }, 400);
+  if (!(dias > 0 && dias <= 45)) return json({ error: "rango no válido" }, 400);
 
   const urls = (Deno.env.get("CALENDARIO_ICAL_URL") ?? "").split(/[\s,]+/).filter(Boolean);
   if (!urls.length || !urls.every((u) => u.startsWith("https://calendar.google.com/"))) {

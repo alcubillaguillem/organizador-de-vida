@@ -56,7 +56,7 @@ END:VCALENDAR`.replace(/\n/g, "\r\n");
 test("eventos de un día: recurrentes, todo el día y zona horaria", { skip: !ICAL }, () => {
   const ini = new Date("2026-11-23T22:00:00Z"), fin = new Date("2026-11-24T22:00:00Z"); // 24 nov en Sofía
   assert.deepEqual(ordenar(eventosEntre(ICAL, ICS, ini, fin)), [
-    { titulo: "Cumpleaños de Ana", calendario: "Clases", dia: "2026-11-24" },
+    { titulo: "Cumpleaños de Ana", calendario: "Clases", dia: "2026-11-24", diaFin: "2026-11-25" },
     { titulo: "Clase de redes", calendario: "Clases", inicio: "2026-11-24T07:00:00.000Z", fin: "2026-11-24T08:30:00.000Z" },
   ]);
 });

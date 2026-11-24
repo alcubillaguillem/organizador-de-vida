@@ -41,6 +41,7 @@
       <nav class="side-nav" aria-label="Secciones">
         <button type="button" class="nav-btn" data-view="inicio"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11 12 4l8 7v9h-5v-6H9v6H4z"/></svg>Inicio</button>
         <button type="button" class="nav-btn" data-view="habitos"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="m8.5 12 2.5 2.5 4.5-5"/></svg>Hábitos</button>
+        <button type="button" class="nav-btn" data-view="calendario"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/></svg>Calendario</button>
       </nav>
     </aside>
 
@@ -108,6 +109,22 @@
           </section>
         </div>
       </section>
+      <section id="view-calendario" class="view hidden" aria-label="Calendario">
+        <header class="view-head cal-head">
+          <div><h1 id="cal-titulo" class="title"></h1><div id="cal-estado" class="small muted"></div></div>
+          <div class="cal-nav">
+            <button type="button" id="cal-prev" class="btn" aria-label="Anterior">‹</button>
+            <button type="button" id="cal-hoy" class="btn">Hoy</button>
+            <button type="button" id="cal-next" class="btn" aria-label="Siguiente">›</button>
+          </div>
+        </header>
+        <div class="seg" role="group" aria-label="Vista">
+          <button type="button" data-modo="mes">Mes</button>
+          <button type="button" data-modo="semana">Semana</button>
+          <button type="button" data-modo="dia">Día</button>
+        </div>
+        <div class="card cal-card"><div id="cal" class="cal"></div></div>
+      </section>
     </main>
 
     <div id="aviso" class="aviso hidden" role="status" aria-live="polite"></div>
@@ -115,6 +132,7 @@
     <nav class="tabbar" aria-label="Secciones">
       <button type="button" class="tab-btn" data-view="inicio"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11 12 4l8 7v9h-5v-6H9v6H4z"/></svg><span>Inicio</span></button>
       <button type="button" class="tab-btn" data-view="habitos"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="m8.5 12 2.5 2.5 4.5-5"/></svg><span>Hábitos</span></button>
+      <button type="button" class="tab-btn" data-view="calendario"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/></svg><span>Calendario</span></button>
     </nav>
   </div>
 </body>
