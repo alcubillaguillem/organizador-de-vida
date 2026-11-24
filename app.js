@@ -193,6 +193,26 @@ function pintarDashboard(hoy) {
   )));
 }
 
+// Eventos de Google Calendar de hoy (función "calendario" de Supabase). Solo en memoria.
+let eventos = [];
+async function traerEventos() {
+  const hoy = new Date();
+  const desde = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
+  const { data, error } = await sb.functions.invoke("calendario", {
+    body: { desde: desde.toISOString(), hasta: sumarDias(desde, 1).toISOString() },
+  });
+  eventos = !error && Array.isArray(data?.eventos) ? data.eventos.filter((e) => typeof e?.titulo === "string") : [];
+  pintar();
+}
+
+const hora = (iso) => new Date(iso).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });
+function pintarEventos() {
+  $("#eventos").replaceChildren(...eventos.map((e) => el("li", { className: "evento" },
+    el("span", { className: "cuando", textContent: e.dia ? "Todo el día" : `${hora(e.inicio)}–${hora(e.fin)}` }),
+    el("span", { textContent: e.titulo }))));
+  $("#eventos-wrap").classList.toggle("hidden", !eventos.length);
+}
+
 const fechaCorta = (k) => desdeClave(k).toLocaleDateString("es-ES", { weekday: "short", day: "numeric", month: "short" });
 
 function filaTarea(t, etiqueta) {
@@ -226,6 +246,7 @@ function pintar() {
     ? `${diarios.filter((h) => h.dias.includes(k)).length} de ${diarios.length}` : "Sin hábitos diarios";
   $("#hoy-semanales").textContent = semanales.length
     ? `Objetivos semanales cumplidos: ${semanales.filter((h) => hechosSemana(h.dias, hoy) >= h.meta).length} de ${semanales.length}` : "";
+  pintarEventos();
   pintarTareas(k, hoy);
   pintarLista(hoy);
   pintarDashboard(hoy);
@@ -266,7 +287,7 @@ document.addEventListener("DOMContentLoaded", () => {
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) return;
     pintar();
-    if (sesion) bajar();
+    if (sesion) { bajar(); traerEventos(); }
   });
   $("#login-form").addEventListener("submit", async (e) => {
     e.preventDefault();
@@ -294,6 +315,7 @@ document.addEventListener("DOMContentLoaded", () => {
     await sb.auth.signOut();
     habitos = [];
     tareas = [];
+    eventos = [];
     guardarLocal();
     pintar();
   });
@@ -310,7 +332,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const entra = !sesion && s;
       sesion = s;
       pintarSesion();
-      if (entra) setTimeout(bajar); // fuera del callback, como pide supabase-js
+      if (entra) setTimeout(() => { bajar(); traerEventos(); }); // fuera del callback, como pide supabase-js
     });
   } else pintarSesion();
   mostrar("inicio");
