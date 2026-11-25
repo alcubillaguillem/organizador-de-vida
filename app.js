@@ -3,6 +3,7 @@ import { emojiDe } from "./emoji.js";
 import { agrupar, CATEGORIAS, categoriaDe } from "./categorias.js";
 import { iniciarCalendario } from "./calendario.js";
 import { limpiarResumen } from "./resumen.js";
+import { MISTERIOS, misteriosDe, ORACIONES } from "./rosario.js";
 
 // Datos: copia en este navegador (localStorage) y, con sesión iniciada, sincronizados en Supabase.
 const STORE = "organizador.habitos.v1";
@@ -429,15 +430,16 @@ async function traerResumen() {
   $("#resumen-cuerpo").replaceChildren(
     r.dia ? el("p", { className: "resumen-dia", textContent: r.dia }) : "",
     el("div", { className: "cajas" },
-      caja("correos", "✉️", "Correos", `${r.correos.length} nuevos${importantes ? ` · ${importantes} importantes` : ""}`),
-      r.evangelio ? caja("evangelio", "✝️", "Evangelio del día", r.evangelio.cita) : ""));
+      caja("correos", "✉️", "Correos", `${r.correos.length} nuevos${importantes ? ` · ${importantes} importantes` : ""}`)));
   $("#correos-lista").replaceChildren(...(r.correos.length ? r.correos.map((m) => el("li", { className: m.importante ? "correo importante" : "correo" },
     el("div", { className: "correo-cab" }, el("strong", { textContent: m.asunto || "(sin asunto)" }), el("small", { textContent: m.de })),
     el("p", { textContent: m.resumen }))) : [el("li", { className: "empty", textContent: "Nada nuevo." })]));
   const ev = r.evangelio;
-  $("#ev-cita").textContent = ev?.cita ?? "";
+  const otroDia = f.fecha !== clave(new Date());
+  $("#ev-cita").textContent = ev ? `${ev.cita}${otroDia ? ` · ${fechaCorta(f.fecha)}` : ""}` : "";
   $("#ev-texto").textContent = ev?.texto ?? "Hoy no hay Evangelio en el resumen.";
   $("#ev-reflexion").textContent = ev?.reflexion ?? "";
+  $("#ev-catequesis").classList.toggle("hidden", !ev?.reflexion);
   $("#ev-enlace").classList.toggle("hidden", !ev?.enlace);
   if (ev?.enlace) $("#ev-enlace").href = ev.enlace;
 }
@@ -532,7 +534,8 @@ function mostrar(vista) {
   animarVista(document.getElementById(`view-${vista}`));
   if (vista === "calendario") calendario.mostrar();
   if (vista === "habitos") requestAnimationFrame(ajustarHabitos);
-  if (vista === "correos" || vista === "evangelio") scrollTo(0, 0);
+  if (vista === "correos" || vista === "espiritualidad") scrollTo(0, 0);
+  if (vista === "espiritualidad") pintarRosario();
 }
 const animarVista = (v) => {
   if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
@@ -541,11 +544,37 @@ const animarVista = (v) => {
   v.classList.add("entra");
 };
 
+// Rosario: por defecto los misterios del día; se pueden cambiar a mano.
+let rosElegido = null, rosDia = null;
+function pintarRosario() {
+  const hoy = misteriosDe(new Date());
+  if (rosDia !== hoy) { rosDia = hoy; rosElegido = hoy; }
+  const m = MISTERIOS.find((x) => x.id === rosElegido);
+  $("#esp-fecha").textContent = new Date().toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" });
+  $("#ros-dias").textContent = m.dias;
+  $("#ros-tipos").replaceChildren(...MISTERIOS.map((x) => {
+    const b = el("button", { type: "button", className: "pildora", textContent: x.nombre });
+    b.setAttribute("aria-pressed", String(x.id === rosElegido));
+    b.addEventListener("click", () => { rosElegido = x.id; pintarRosario(); });
+    return b;
+  }));
+  $("#ros-texto").replaceChildren(...ORACIONES.map((o) => el("div", { className: "ros-sec" },
+    o.titulo ? el("h3", { textContent: o.titulo }) : "",
+    o.misterios ? el("ol", { className: "ros-misterios" }, ...m.lista.map((t) => el("li", { textContent: t }))) : "",
+    el("p", { textContent: o.texto }))));
+}
+function modoEspiritualidad(modo) {
+  for (const n of [$("#view-espiritualidad"), $("#esp-seg")]) n.dataset.modo = modo;
+  for (const b of $("#esp-seg").querySelectorAll("button")) b.setAttribute("aria-pressed", String(b.dataset.modo === modo));
+}
+
 let calendario = null;
 
 document.addEventListener("DOMContentLoaded", () => {
   for (const b of document.querySelectorAll("[data-view]")) b.addEventListener("click", () => mostrar(b.dataset.view));
   addEventListener("resize", () => requestAnimationFrame(ajustarHabitos));
+  for (const b of $("#esp-seg").querySelectorAll("button")) b.addEventListener("click", () => { modoEspiritualidad(b.dataset.modo); scrollTo(0, 0); });
+  modoEspiritualidad("evangelio");
   for (const b of [$("#hab-ver-todos"), $("#rachas-mas")]) b.addEventListener("click", () => mostrar("todos"));
   $("#hab-nuevo").addEventListener("click", () => calendario.abrirHoja({ tipo: "habito" }));
   calendario = iniciarCalendario({

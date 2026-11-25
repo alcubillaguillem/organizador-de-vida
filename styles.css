@@ -459,6 +459,21 @@ html.cal-abierto, html.cal-abierto body { overflow: hidden; overscroll-behavior:
 .correo.importante strong::before { content: "● "; color: var(--accent); }
 .evangelio p { line-height: 1.7; white-space: pre-line; }
 #ev-texto { font-size: 17px; margin-top: 0; }
+#ev-enlace { display: inline-block; margin-top: 8px; }
+
+/* Espiritualidad: en móvil se elige Evangelio o Rosario; en PC, uno al lado del otro con su propio scroll */
+.tabbar { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.seg2[data-modo="rosario"] .seg-ind { transform: translateX(100%); }
+@media (max-width: 899px) { #view-espiritualidad[data-modo="evangelio"] #rosario, #view-espiritualidad[data-modo="rosario"] #evangelio { display: none; } }
+.ros-tipos { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin-bottom: 4px; }
+.ros-tipos .pildora { padding: 8px 4px; font-size: 13px; }
+.ros-tipos .pildora[aria-pressed="true"] { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+.ros-sec { padding: 14px 0; border-bottom: 1px solid var(--line); }
+.ros-sec:last-child { border-bottom: 0; }
+.ros-sec h3 { margin: 0 0 8px; font-size: 13px; letter-spacing: .06em; color: var(--accent); }
+.ros-sec p { margin: 0; line-height: 1.65; white-space: pre-line; }
+.ros-misterios { margin: 0 0 10px; padding-left: 22px; line-height: 1.6; font-weight: 600; }
+@media (min-width: 900px) { #esp-seg { display: none; } }
 .volver { margin-bottom: 6px; font-weight: 600; }
 #activar-avisos { margin: 0 0 12px; }
 #resumen { scroll-margin-top: 16px; }
