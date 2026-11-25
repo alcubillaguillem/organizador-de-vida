@@ -53,7 +53,8 @@ button { font: inherit; color: inherit; }
     display: flex; flex-direction: column; gap: 28px; flex: 0 0 240px;
     position: sticky; top: 0; height: 100vh; padding: 28px 18px; border-right: 1px solid #1e1e23;
   }
-  .content { flex: 1; min-width: 0; padding: 28px 36px 48px; }
+  .content { flex: 1; min-width: 0; padding: 28px 36px 48px; max-width: 1480px; }
+  .view .inicio-grid { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 16px; align-items: start; }
 }
 .brand { display: flex; align-items: center; gap: 10px; padding: 0 8px; font: 700 18px var(--num); }
 .brand img { border-radius: 8px; }
@@ -297,8 +298,10 @@ html.cal-abierto, html.cal-abierto body { overflow: hidden; overscroll-behavior:
   .panel .asa { display: none; }
   .horas-scroll { margin: 0; border: 1px solid var(--line); border-radius: var(--radius); background: var(--card); }
   .h-linea span { background: var(--card); }
-  .tira { max-width: 560px; }
 }
+.p-prox-tit { font: 600 15px var(--num); margin: 22px 4px 4px; }
+.p-prox-dia { font-size: 12px; font-weight: 600; color: var(--muted); margin: 12px 4px 2px; }
+@media (max-width: 899px) { .solo-pc { display: none !important; } }
 
 /* ---------- Hoja para crear o editar ---------- */
 .hoja {
@@ -403,6 +406,7 @@ html.cal-abierto, html.cal-abierto body { overflow: hidden; overscroll-behavior:
 
 /* ---------- Hábitos: dashboard ---------- */
 .dash h2 { margin-top: 0; }
+.columna { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
 .g-cab { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin: 16px 0 8px; }
 .g-cab .label { margin: 0; }
 .g-info { font-size: 13px; font-weight: 600; white-space: nowrap; }
@@ -423,7 +427,7 @@ html.cal-abierto, html.cal-abierto body { overflow: hidden; overscroll-behavior:
 .bar.vacia { cursor: default; }
 .g-fechas { display: flex; justify-content: space-between; font-size: 10px; color: var(--muted); margin-top: 6px; }
 
-.mapa-wrap { max-width: 400px; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px; }
+.mapa-wrap { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px; }
 .mapa-dias { display: grid; grid-template-rows: repeat(7, 1fr); gap: 3px; font-size: 10px; color: var(--muted); align-items: center; }
 .mapa-leyenda { display: flex; align-items: center; justify-content: flex-end; gap: 3px; font-size: 11px; color: var(--muted); margin-top: 8px; }
 .mapa-leyenda span { width: 11px; height: 11px; border-radius: 3px; background: var(--raised); }
@@ -490,3 +494,5 @@ html.cal-abierto, html.cal-abierto body { overflow: hidden; overscroll-behavior:
 .ctx-row.active { color: var(--accent); }
 .ctx-info { padding: 10px 16px; font-size: 13px; color: var(--muted); }
 @media (prefers-reduced-motion: reduce) { .ctx-layer, .ctx-menu, .ctx-preview { transition: none; } }
+
+.inicio-grid { display: flex; flex-direction: column; gap: 16px; }

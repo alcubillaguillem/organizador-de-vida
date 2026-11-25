@@ -26,9 +26,22 @@ function animar(nodo, clase, origen) {
 }
 
 /** Arrastre horizontal que sigue al dedo. `cambiar(paso)` se llama al soltar si se pasó el umbral. */
-// Rueda/trackpad horizontal: un gesto = un cambio. La inercia del trackpad sigue mandando eventos
-// después de cambiar (y la zona ya es otra), así que el bloqueo es común a todas las zonas.
-let ruedaAcum = 0, ruedaBloqueo = false, ruedaTimer = null;
+// Rueda/trackpad horizontal: un gesto = un cambio. Tras cambiar, la inercia del trackpad sigue mandando
+// eventos cada vez más flojos; se ignoran hasta que haya una pausa o el gesto vuelva a acelerar (gesto
+// nuevo). El estado es común a todas las zonas porque al cambiar de mes la zona se sustituye.
+const rueda = { acum: 0, armado: true, ultimo: 0, mag: 0, cambio: 0 };
+function ruedaCambia(dx) {
+  const r = rueda, ahora = performance.now(), mag = Math.abs(dx);
+  if (ahora - r.ultimo > 150) { r.armado = true; r.acum = 0; } // pausa: gesto nuevo
+  else if (mag > r.mag * 1.5 + 2) r.armado = true; // vuelve a acelerar: gesto nuevo
+  r.ultimo = ahora; r.mag = mag;
+  if (!r.armado || ahora - r.cambio < 250) return 0;
+  r.acum += dx;
+  if (Math.abs(r.acum) < 40) return 0;
+  const paso = r.acum > 0 ? 1 : -1;
+  Object.assign(r, { acum: 0, armado: false, cambio: ahora });
+  return paso;
+}
 
 /** Deslizar la zona en horizontal (dedo, ratón arrastrando o trackpad) llama a cambiar(+1 | -1). */
 function deslizable(zona, cambiar) {
@@ -67,11 +80,8 @@ function deslizable(zona, cambiar) {
   zona.addEventListener("wheel", (e) => {
     if (Math.abs(e.deltaX) <= Math.abs(e.deltaY)) return;
     e.preventDefault();
-    clearTimeout(ruedaTimer);
-    ruedaTimer = setTimeout(() => { ruedaBloqueo = false; ruedaAcum = 0; }, 200);
-    if (ruedaBloqueo) return;
-    ruedaAcum += e.deltaX;
-    if (Math.abs(ruedaAcum) > 40) { ruedaBloqueo = true; cambiar(ruedaAcum > 0 ? 1 : -1); ruedaAcum = 0; }
+    const paso = ruedaCambia(e.deltaX);
+    if (paso) cambiar(paso);
   }, { passive: false });
 }
 
@@ -155,6 +165,18 @@ export function iniciarCalendario(ctx) {
       const anadir = el("button", { type: "button", className: "p-vacio-btn", textContent: "+ Añadir algo" });
       anadir.addEventListener("click", () => abrirHoja({ fecha: k }));
       lista.append(el("li", { className: "p-vacio" }, el("span", { textContent: "Día libre" }), anadir));
+    }
+    // En el PC el panel es alto: debajo van los próximos 7 días (en el móvil se ocultan).
+    const proximos = Array.from({ length: 7 }, (_, i) => sumarDias(cal.fecha, i + 1)).map((d) => {
+      const kd = clave(d), { todoDia: td, conHora: ch } = delDiaK(kd);
+      return { d, items: [...td, ...ch, ...tareasDe(kd).filter((t) => !t.hecha)] };
+    }).filter((x) => x.items.length);
+    if (proximos.length) {
+      lista.append(el("li", { className: "p-prox-tit solo-pc", textContent: "Próximos días" }));
+      for (const { d, items } of proximos) {
+        lista.append(el("li", { className: "p-prox-dia solo-pc", textContent: mayus(txt(d, { weekday: "long", day: "numeric" })) }),
+          ...items.map((it) => { const f = filaPanel(it); f.classList.add("solo-pc"); return f; }));
+      }
     }
     $("#cal .panel").replaceChildren(el("div", { className: "asa" }),
       el("header", {}, el("div", {}, el("h3", { textContent: mayus(txt(cal.fecha, { weekday: "long", day: "numeric" })) }),
