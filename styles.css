@@ -496,3 +496,27 @@ html.cal-abierto, html.cal-abierto body { overflow: hidden; overscroll-behavior:
 @media (prefers-reduced-motion: reduce) { .ctx-layer, .ctx-menu, .ctx-preview { transition: none; } }
 
 .inicio-grid { display: flex; flex-direction: column; gap: 16px; }
+
+/* ---------- PC: cada pestaña cabe en una pantalla; si algo no cabe, se desplaza solo esa tarjeta ---------- */
+@media (min-width: 900px) {
+  html, body { height: 100%; overflow: hidden; }
+  .shell { height: 100vh; min-height: 0; }
+  .content { height: 100vh; overflow: hidden; display: flex; flex-direction: column; padding-bottom: 24px; }
+  .content > .view:not(.hidden) { flex: 1 1 auto; min-height: 0; }
+  .cal-view { height: auto; }
+  .view > .grid-2, .view > .inicio-grid { flex: 1 1 auto; min-height: 0; grid-template-rows: minmax(0, 1fr); align-items: stretch; }
+  .view > .card, .grid-2 > .card, .inicio-grid > .card, .columna > .card { min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
+  .columna { min-height: 0; }
+  .columna > .card { flex: 0 1 auto; }
+  .columna > .card:first-child { flex: 1 1 auto; }
+  #view-habitos .columna > .card:last-child { max-height: 42%; }
+  .inicio-grid .columna > .card:first-child { flex: 0 0 auto; }
+  .inicio-grid #resumen { flex: 1 1 auto; }
+  .kpi-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .kpi { padding: 10px 12px; }
+  .kpi-num { font-size: 22px; }
+  .dash .label, .dash .g-cab { margin-top: 12px; }
+  .heatmap { grid-template-rows: repeat(7, 22px); }
+  .heatmap span { aspect-ratio: auto; }
+  .mapa-dias { grid-template-rows: repeat(7, 22px); }
+}
