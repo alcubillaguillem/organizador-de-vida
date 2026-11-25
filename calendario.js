@@ -571,6 +571,17 @@ export function iniciarCalendario(ctx) {
   });
   for (const b of document.querySelectorAll("#h-tipo [data-modo]")) b.addEventListener("click", () => { hoja.tipo = b.dataset.modo; ajustarHoja(); });
   $("#h-todo").addEventListener("change", ajustarHoja);
+  // Al elegir la hora de inicio, el final se mueve con ella (1 h por defecto, o lo que dure el evento).
+  const minutos = (id) => { const [h, m] = $(id).value.split(":").map(Number); return h * 60 + m; };
+  const duracion = () => { const d = minutos("#h-fin") - minutos("#h-ini"); return d > 0 ? d : d + 1440; };
+  let durHoja = 60;
+  $("#h-ini").addEventListener("focus", () => { if ($("#h-ini").value && $("#h-fin").value) durHoja = duracion(); });
+  $("#h-ini").addEventListener("change", () => {
+    if (!$("#h-ini").value) return;
+    const f = (minutos("#h-ini") + durHoja) % 1440;
+    $("#h-fin").value = `${String(Math.floor(f / 60)).padStart(2, "0")}:${String(f % 60).padStart(2, "0")}`;
+  });
+  $("#h-fin").addEventListener("change", () => { if ($("#h-ini").value && $("#h-fin").value) durHoja = duracion(); });
   $("#h-cerrar").addEventListener("click", cerrarHoja);
   $("#hoja").addEventListener("cancel", (e) => { e.preventDefault(); cerrarHoja(); });
   $("#hoja").addEventListener("click", (e) => { if (e.target === $("#hoja")) cerrarHoja(); }); // toque fuera (fondo)
