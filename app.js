@@ -178,7 +178,15 @@ function pintarLista(hoy) {
   $("#hab-sub").textContent = !habitos.length ? "Toca + para añadir tu primer hábito"
     : hechos === habitos.length ? "¡Todo hecho hoy!" : `Te ${habitos.length - hechos === 1 ? "queda" : "quedan"} ${habitos.length - hechos} para hoy`;
 
-  $("#lista").replaceChildren(...(habitos.length ? habitos.map((h) => {
+  const filas = () => (habitos.length ? habitos.map((h) => filaHabito(h, hoy, k, previos))
+    : [el("li", { className: "empty", textContent: "Aún no tienes hábitos." })]);
+  $("#lista").replaceChildren(...filas());
+  $("#lista-todos").replaceChildren(...filas());
+  $("#lista-todos").dataset.d = habitos.length > 14 ? "2" : "1";
+  requestAnimationFrame(ajustarHabitos);
+}
+
+function filaHabito(h, hoy, k, previos) {
     const hecho = h.dias.includes(k);
     const info = el("button", { type: "button", className: "hab-info", ariaLabel: `Editar ${h.nombre}` },
       el("span", { className: "hab-emoji", textContent: emojiDe(h.nombre) }),
@@ -203,7 +211,38 @@ function pintarLista(hoy) {
     li.dataset.id = h.id;
     mantenerPulsado(li, info, () => menuHabito(h, li, hoy));
     return li;
-  }) : [el("li", { className: "empty", textContent: "Aún no tienes hábitos." })]));
+}
+
+/**
+ * PC: Hoy y Rachas deben caber en la columna sin scroll. Se prueba con filas normales, compactas y
+ * mínimas; si ni así caben, se ocultan las últimas y aparece «Ver todos» (pestaña con todos los hábitos).
+ */
+function ajustarHabitos() {
+  const col = $("#view-habitos .columna"), lista = $("#lista"), rachas = $("#tabla");
+  const todos = $("#hab-ver-todos"), mas = $("#rachas-mas");
+  for (const x of [...lista.children, ...rachas.children]) x.classList.remove("oculto");
+  todos.classList.add("hidden"); mas.classList.add("hidden");
+  const pc = matchMedia("(min-width: 900px)").matches && !$("#view-habitos").classList.contains("hidden");
+  const desborda = () => col.scrollHeight > col.clientHeight + 1 || [lista.closest(".card"), rachas.closest(".card")].some((c) => c.scrollHeight > c.clientHeight + 1);
+  for (const d of ["0", "1", "2"]) {
+    lista.dataset.d = rachas.dataset.d = pc ? d : "0";
+    if (!pc || !desborda()) return;
+  }
+  // Muchísimos hábitos: quita filas por el final (alternando Rachas y Hoy) hasta que quepa.
+  todos.classList.remove("hidden"); mas.classList.remove("hidden");
+  todos.textContent = `Ver los ${habitos.length} hábitos ›`;
+  mas.textContent = "+ más"; // con texto ya puesto, para medir su altura real
+  const vis = (ul) => [...ul.children].filter((x) => !x.classList.contains("oculto"));
+  let turno = 0;
+  while (desborda()) {
+    const ul = turno++ % 2 ? lista : rachas, v = vis(ul);
+    if (v.length <= 1 && vis(ul === lista ? rachas : lista).length <= 1) break;
+    if (v.length > 1) v.at(-1).classList.add("oculto");
+  }
+  const n = habitos.length;
+  mas.textContent = `+ ${n - vis(rachas).length} más`;
+  if (n === vis(lista).length) todos.classList.add("hidden");
+  if (n === vis(rachas).length) mas.classList.add("hidden");
 }
 // ---------- Menú al mantener pulsado (el mismo que en Gastos Erasmus) ----------
 /** Mantener pulsado el elemento (fuera de sus botones de marcar) llama a fn. En el PC, clic derecho. */
@@ -278,11 +317,12 @@ function menuHabito(h, li, hoy) {
 }
 
 const animarCheck = (id) => {
-  const b = document.querySelector(`#lista [data-id="${CSS.escape(id)}"] .hab-check`);
-  if (!b || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-  b.classList.remove("pop");
-  void b.offsetWidth;
-  b.classList.add("pop");
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  for (const b of document.querySelectorAll(`[data-id="${CSS.escape(id)}"] .hab-check`)) {
+    b.classList.remove("pop");
+    void b.offsetWidth;
+    b.classList.add("pop");
+  }
 };
 
 /** Barras de los últimos 30 días: % de hábitos diarios cumplidos. Tocar una barra muestra su dato. */
@@ -486,11 +526,12 @@ function pintar() {
 function mostrar(vista) {
   for (const v of document.querySelectorAll(".view")) v.classList.toggle("hidden", v.id !== `view-${vista}`);
   for (const b of document.querySelectorAll("[data-view]")) {
-    if (b.dataset.view === vista) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current");
+    if (b.dataset.view === (vista === "todos" ? "habitos" : vista)) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current");
   }
   document.documentElement.classList.toggle("cal-abierto", vista === "calendario");
   animarVista(document.getElementById(`view-${vista}`));
   if (vista === "calendario") calendario.mostrar();
+  if (vista === "habitos") requestAnimationFrame(ajustarHabitos);
   if (vista === "correos" || vista === "evangelio") scrollTo(0, 0);
 }
 const animarVista = (v) => {
@@ -504,6 +545,8 @@ let calendario = null;
 
 document.addEventListener("DOMContentLoaded", () => {
   for (const b of document.querySelectorAll("[data-view]")) b.addEventListener("click", () => mostrar(b.dataset.view));
+  addEventListener("resize", () => requestAnimationFrame(ajustarHabitos));
+  for (const b of [$("#hab-ver-todos"), $("#rachas-mas")]) b.addEventListener("click", () => mostrar("todos"));
   $("#hab-nuevo").addEventListener("click", () => calendario.abrirHoja({ tipo: "habito" }));
   calendario = iniciarCalendario({
     $, el, aviso, google, eventoValido,
