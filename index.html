@@ -46,8 +46,9 @@
     </aside>
 
     <main class="content">
-      <section id="view-inicio" class="view narrow" aria-label="Inicio">
+      <section id="view-inicio" class="view" aria-label="Inicio">
         <header class="view-head"><div><h1 class="title">Hoy</h1><div id="hoy-fecha" class="small muted"></div></div></header>
+        <div class="inicio-grid">
         <section class="card">
           <div class="card-head"><h2>Agenda</h2><button type="button" id="nueva-tarea" class="pildora acento">+ Tarea</button></div>
           <div id="eventos-wrap" class="hidden">
@@ -60,6 +61,7 @@
             <ul id="tareas-prox" class="list"></ul>
           </div>
         </section>
+        <div class="columna">
         <section class="card">
           <h2>Hábitos diarios de hoy</h2>
           <div id="hoy-habitos" class="kpi-num">—</div>
@@ -70,6 +72,8 @@
           <button type="button" id="activar-avisos" class="pildora acento hidden">🔔 Avisarme cuando esté listo</button>
           <div id="resumen-cuerpo"><p class="empty">Todavía no hay resumen de hoy. Llega cada día a las 7:00.</p></div>
         </section>
+        </div>
+        </div>
         <p class="small muted"><span id="cuenta"></span> <button type="button" id="salir" class="link hidden">Cerrar sesión</button></p>
       </section>
 
@@ -94,10 +98,16 @@
           <button type="button" id="hab-nuevo" class="redondo primario" aria-label="Nuevo hábito"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
         </header>
         <div class="grid-2">
-          <section class="card">
-            <div class="card-head"><h2>Hoy</h2><div id="hab-anillo" class="anillo" role="img"></div></div>
-            <ul id="lista" class="hab-lista"></ul>
-          </section>
+          <div class="columna">
+            <section class="card">
+              <div class="card-head"><h2>Hoy</h2><div id="hab-anillo" class="anillo" role="img"></div></div>
+              <ul id="lista" class="hab-lista"></ul>
+            </section>
+            <section class="card">
+              <h2>Rachas</h2>
+              <ul id="tabla" class="rachas"></ul>
+            </section>
+          </div>
 
           <section class="card dash">
             <h2>Consistencia</h2>
@@ -115,8 +125,6 @@
               <div id="mapa" class="heatmap" role="img" aria-label="Mapa de calor de las últimas 12 semanas"></div>
             </div>
             <div class="mapa-leyenda" aria-hidden="true">Menos <span></span><span class="l1"></span><span class="l2"></span><span class="l3"></span><span class="l4"></span> Más</div>
-            <div class="label">Rachas</div>
-            <ul id="tabla" class="rachas"></ul>
           </section>
         </div>
       </section>
