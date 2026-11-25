@@ -102,10 +102,12 @@
             <section class="card">
               <div class="card-head"><h2>Hoy</h2><div id="hab-anillo" class="anillo" role="img"></div></div>
               <ul id="lista" class="hab-lista"></ul>
+              <button type="button" id="hab-ver-todos" class="ver-todos hidden"></button>
             </section>
             <section class="card">
               <h2>Rachas</h2>
               <ul id="tabla" class="rachas"></ul>
+              <button type="button" id="rachas-mas" class="ver-todos hidden"></button>
             </section>
           </div>
 
@@ -127,6 +129,11 @@
             <div class="mapa-leyenda" aria-hidden="true">Menos <span></span><span class="l1"></span><span class="l2"></span><span class="l3"></span><span class="l4"></span> Más</div>
           </section>
         </div>
+      </section>
+
+      <section id="view-todos" class="view hidden" aria-label="Todos los hábitos">
+        <header class="view-head"><div><button type="button" class="link volver" data-view="habitos">‹ Hábitos</button><h1 class="title">Todos los hábitos</h1></div></header>
+        <section class="card"><ul id="lista-todos" class="hab-lista todos" data-d="1"></ul></section>
       </section>
 
       <section id="view-calendario" class="view cal-view hidden" aria-label="Calendario">

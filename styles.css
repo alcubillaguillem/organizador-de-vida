@@ -509,7 +509,11 @@ html.cal-abierto, html.cal-abierto body { overflow: hidden; overscroll-behavior:
   .columna { min-height: 0; }
   .columna > .card { flex: 0 1 auto; }
   .columna > .card:first-child { flex: 1 1 auto; }
-  #view-habitos .columna > .card:last-child { max-height: 42%; }
+  /* Hoy y Rachas se reparten la columna; las filas crecen hasta un tope y nunca hay scroll (ver ajustarHabitos). */
+  #view-habitos .columna > .card { flex: 1 1 auto; display: flex; flex-direction: column; overflow: hidden; }
+  #view-habitos .columna .hab-lista, #view-habitos .columna .rachas { flex: 1 0 auto; }
+  #view-habitos .columna .hab-fila { flex: 1 1 auto; max-height: 150px; align-content: center; }
+  #view-habitos .columna .rachas > li { flex: 1 1 auto; max-height: 92px; display: flex; flex-direction: column; justify-content: center; }
   .inicio-grid .columna > .card:first-child { flex: 0 0 auto; }
   .inicio-grid #resumen { flex: 1 1 auto; }
   .kpi-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
@@ -520,3 +524,32 @@ html.cal-abierto, html.cal-abierto body { overflow: hidden; overscroll-behavior:
   .heatmap span { aspect-ratio: auto; }
   .mapa-dias { grid-template-rows: repeat(7, 22px); }
 }
+
+/* Densidad de Hoy y Rachas según cuántos hábitos haya (data-d: 0 normal, 1 compacta, 2 mínima) */
+.oculto, .rachas[data-d] > li.oculto { display: none !important; }
+.ver-todos { margin-top: 10px; width: 100%; padding: 10px; border: 1px dashed var(--line); border-radius: 12px; background: none; color: var(--accent); font-weight: 600; cursor: pointer; flex: 0 0 auto; }
+.ver-todos:hover { background: var(--raised); }
+.hab-lista[data-d="1"], .hab-lista[data-d="2"] { gap: 6px; }
+.hab-lista[data-d="1"] .hab-fila { grid-template-columns: minmax(0, 1fr) auto auto; grid-template-areas: "info dias check"; padding: 8px 12px; gap: 12px; }
+.hab-lista[data-d="1"] .hab-dias, .hab-lista[data-d="2"] .hab-dias { padding-left: 0; }
+.hab-lista[data-d="1"] .hab-emoji { width: 34px; height: 34px; font-size: 18px; border-radius: 10px; }
+.hab-lista[data-d="1"] .hab-check { width: 40px; height: 40px; }
+.hab-lista[data-d="2"] .hab-fila { grid-template-columns: minmax(0, 1fr) auto auto; grid-template-areas: "info dias check"; padding: 4px 10px; gap: 10px; border-radius: 12px; }
+.hab-lista[data-d="2"] .hab-emoji { width: 26px; height: 26px; font-size: 15px; border-radius: 8px; background: none; }
+.hab-lista[data-d="2"] .hab-txt small { display: none; }
+.hab-lista[data-d="2"] .hab-txt strong { font-size: 14px; }
+.hab-lista[data-d="2"] .hab-check { width: 30px; height: 30px; border-width: 1.5px; }
+.hab-lista[data-d="2"] .hab-check .ic { width: 17px; height: 17px; }
+.hab-lista[data-d="2"] .hab-dias { gap: 4px; }
+.hab-lista[data-d="2"] .hab-dias button { width: 20px; height: 20px; font-size: 9px; }
+.rachas[data-d="1"] { gap: 10px; }
+.rachas[data-d="1"] .r-pie { display: none; }
+.rachas[data-d="2"] { gap: 6px; }
+.rachas[data-d="2"] > li { display: grid !important; grid-template-columns: minmax(0, 1fr) 30% 64px; align-items: center; gap: 10px; }
+.rachas[data-d="2"] .r-fila { display: contents; }
+.rachas[data-d="2"] .r-nombre { font-size: 14px; grid-column: 1; grid-row: 1; }
+.rachas[data-d="2"] .r-barra { grid-column: 2; grid-row: 1; margin: 0; }
+.rachas[data-d="2"] .r-num { grid-column: 3; grid-row: 1; font-size: 13px; text-align: right; }
+.rachas[data-d="2"] .r-pie { display: none; }
+/* Pestaña «Todos los hábitos»: en columnas */
+.hab-lista.todos { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 420px), 1fr)); gap: 8px; }
