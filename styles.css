@@ -473,7 +473,12 @@ html.cal-abierto, html.cal-abierto body { overflow: hidden; overscroll-behavior:
 .ros-sec h3 { margin: 0 0 8px; font-size: 13px; letter-spacing: .06em; color: var(--accent); }
 .ros-sec p { margin: 0; line-height: 1.65; white-space: pre-line; }
 .ros-misterios { margin: 0 0 10px; padding-left: 22px; line-height: 1.6; font-weight: 600; }
-@media (min-width: 900px) { #esp-seg { display: none; } }
+.horas { display: flex; flex-wrap: wrap; gap: 8px; }
+.horas .pildora { flex: 1 1 auto; text-align: center; color: inherit; text-decoration: none; padding: 10px 12px; }
+@media (min-width: 900px) {
+  #esp-seg { display: none; }
+  #view-espiritualidad > #horas { flex: 0 0 auto; }
+}
 .volver { margin-bottom: 6px; font-weight: 600; }
 #activar-avisos { margin: 0 0 12px; }
 #resumen { scroll-margin-top: 16px; }
