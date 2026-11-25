@@ -26,25 +26,53 @@ function animar(nodo, clase, origen) {
 }
 
 /** Arrastre horizontal que sigue al dedo. `cambiar(paso)` se llama al soltar si se pasó el umbral. */
+// Rueda/trackpad horizontal: un gesto = un cambio. La inercia del trackpad sigue mandando eventos
+// después de cambiar (y la zona ya es otra), así que el bloqueo es común a todas las zonas.
+let ruedaAcum = 0, ruedaBloqueo = false, ruedaTimer = null;
+
+/** Deslizar la zona en horizontal (dedo, ratón arrastrando o trackpad) llama a cambiar(+1 | -1). */
 function deslizable(zona, cambiar) {
-  let x0 = 0, y0 = 0, eje = null, dx = 0;
-  zona.addEventListener("touchstart", (e) => { x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; eje = null; dx = 0; }, { passive: true });
-  zona.addEventListener("touchmove", (e) => {
-    const t = e.touches[0];
-    dx = t.clientX - x0;
-    if (!eje && (Math.abs(dx) > 8 || Math.abs(t.clientY - y0) > 8)) eje = Math.abs(dx) > Math.abs(t.clientY - y0) ? "x" : "y";
+  let id = null, x0 = 0, y0 = 0, t0 = 0, dx = 0, eje = null, sinClic = false;
+  const volver = () => { zona.style.transition = ""; zona.style.transform = ""; zona.style.opacity = ""; zona.classList.remove("arrastrando"); };
+  zona.addEventListener("pointerdown", (e) => {
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    id = e.pointerId; x0 = e.clientX; y0 = e.clientY; t0 = performance.now(); dx = 0; eje = null;
+  });
+  zona.addEventListener("pointermove", (e) => {
+    if (e.pointerId !== id) return;
+    dx = e.clientX - x0;
+    const dy = e.clientY - y0;
+    if (!eje && (Math.abs(dx) > 8 || Math.abs(dy) > 8)) {
+      eje = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
+      if (eje === "x") { try { zona.setPointerCapture(id); } catch { /* ya soltado */ } zona.classList.add("arrastrando"); }
+    }
     if (eje !== "x") return;
     zona.style.transition = "none";
     zona.style.transform = `translateX(${dx}px)`;
     zona.style.opacity = String(1 - Math.min(Math.abs(dx) / 600, 0.35));
-  }, { passive: true });
-  zona.addEventListener("touchend", () => {
-    if (eje !== "x") return;
-    zona.style.transition = "";
-    zona.style.transform = "";
-    zona.style.opacity = "";
-    if (Math.abs(dx) > 60) cambiar(dx < 0 ? 1 : -1);
   });
+  const fin = (e) => {
+    if (e.pointerId !== id) return;
+    id = null;
+    if (eje !== "x") return;
+    sinClic = true; // el clic que llega al soltar no debe seleccionar un día
+    setTimeout(() => { sinClic = false; }, 0);
+    volver();
+    const rapido = Math.abs(dx) > 25 && Math.abs(dx) / (performance.now() - t0) > 0.4;
+    if (e.type === "pointerup" && (Math.abs(dx) > 60 || rapido)) cambiar(dx < 0 ? 1 : -1);
+  };
+  zona.addEventListener("pointerup", fin);
+  zona.addEventListener("pointercancel", fin);
+  zona.addEventListener("click", (e) => { if (sinClic) { e.stopPropagation(); e.preventDefault(); } }, true);
+  zona.addEventListener("wheel", (e) => {
+    if (Math.abs(e.deltaX) <= Math.abs(e.deltaY)) return;
+    e.preventDefault();
+    clearTimeout(ruedaTimer);
+    ruedaTimer = setTimeout(() => { ruedaBloqueo = false; ruedaAcum = 0; }, 200);
+    if (ruedaBloqueo) return;
+    ruedaAcum += e.deltaX;
+    if (Math.abs(ruedaAcum) > 40) { ruedaBloqueo = true; cambiar(ruedaAcum > 0 ? 1 : -1); ruedaAcum = 0; }
+  }, { passive: false });
 }
 
 export function iniciarCalendario(ctx) {
@@ -513,6 +541,12 @@ export function iniciarCalendario(ctx) {
     animar($("#cal .panel .p-lista"), "panel-entra");
   });
   $("#cal-nuevo").addEventListener("click", () => abrirHoja({}));
+  // En el PC, las flechas ← → cambian de mes (o de día).
+  document.addEventListener("keydown", (e) => {
+    if (!visible() || $("#hoja").open || e.altKey || e.ctrlKey || e.metaKey || e.target.closest("input, textarea, select")) return;
+    if (e.key === "ArrowLeft") $("#cal-prev").click();
+    else if (e.key === "ArrowRight") $("#cal-next").click();
+  });
   for (const b of document.querySelectorAll("#h-tipo [data-modo]")) b.addEventListener("click", () => { hoja.tipo = b.dataset.modo; ajustarHoja(); });
   $("#h-todo").addEventListener("change", ajustarHoja);
   $("#h-cerrar").addEventListener("click", cerrarHoja);

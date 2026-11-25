@@ -203,6 +203,7 @@ html.cal-abierto, html.cal-abierto body { overflow: hidden; overscroll-behavior:
 .vista-mes { display: flex; flex-direction: column; gap: 14px; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
 .vista-mes::-webkit-scrollbar { display: none; }
 .mes { flex: 0 0 auto; }
+.mes.arrastrando, .dia-cuerpo.arrastrando { cursor: grabbing; -webkit-user-select: none; user-select: none; }
 .mes-cab, .mes-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 5px; }
 .mes-cab span { text-align: center; font-size: 11px; color: var(--muted); padding-bottom: 6px; font-weight: 600; }
 .casilla {
