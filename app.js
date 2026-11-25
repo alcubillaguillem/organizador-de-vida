@@ -528,13 +528,13 @@ function pintar() {
 function mostrar(vista) {
   for (const v of document.querySelectorAll(".view")) v.classList.toggle("hidden", v.id !== `view-${vista}`);
   for (const b of document.querySelectorAll("[data-view]")) {
-    if (b.dataset.view === (vista === "todos" ? "habitos" : vista)) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current");
+    if (b.dataset.view === ({ todos: "habitos", hora: "espiritualidad" }[vista] ?? vista)) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current");
   }
   document.documentElement.classList.toggle("cal-abierto", vista === "calendario");
   animarVista(document.getElementById(`view-${vista}`));
   if (vista === "calendario") calendario.mostrar();
   if (vista === "habitos") requestAnimationFrame(ajustarHabitos);
-  if (vista === "correos" || vista === "espiritualidad") scrollTo(0, 0);
+  if (vista === "correos" || vista === "espiritualidad" || vista === "hora") scrollTo(0, 0);
   if (vista === "espiritualidad") pintarRosario();
 }
 const animarVista = (v) => {
@@ -563,6 +563,30 @@ function pintarRosario() {
     o.misterios ? el("ol", { className: "ros-misterios" }, ...m.lista.map((t) => el("li", { textContent: t }))) : "",
     el("p", { textContent: o.texto }))));
 }
+// Liturgia de las Horas: la función "liturgia" trae el texto de iBreviary ya limpio. Se pinta con textContent.
+const horasCache = new Map();
+const parrafoValido = (p) => Array.isArray(p) && p.every((s) => Array.isArray(s) && typeof s[0] === "string" && typeof s[1] === "boolean");
+async function abrirHora(boton) {
+  const hora = boton.dataset.hora, caja = $("#hora-texto"), k = `${clave(new Date())}:${hora}`;
+  $("#hora-titulo").textContent = boton.textContent;
+  mostrar("hora");
+  const enlace = () => el("a", { href: `https://www.ibreviary.com/m2/breviario.php?lang=es&s=${hora}`, target: "_blank", rel: "noopener noreferrer", textContent: "Abrir en iBreviary" });
+  if (!sesion) return caja.replaceChildren(el("p", { className: "empty", textContent: "Inicia sesión para ver el texto." }), enlace());
+  if (!horasCache.has(k)) {
+    caja.replaceChildren(el("p", { className: "empty", textContent: "Cargando…" }));
+    const { data, error } = await sb.functions.invoke("liturgia", { body: { hora } });
+    if (error || !Array.isArray(data?.parrafos) || !data.parrafos.every(parrafoValido)) {
+      return caja.replaceChildren(el("p", { className: "empty", textContent: "No se ha podido cargar." }), enlace());
+    }
+    horasCache.set(k, data.parrafos);
+  }
+  caja.replaceChildren(...horasCache.get(k).map((p) => {
+    const titulo = p.length === 1 && p[0][1] && p[0][0].length < 60;
+    return el(titulo ? "h3" : "p", {}, ...p.map(([t, r]) => (r && !titulo ? el("span", { className: "rubrica", textContent: t }) : t)));
+  }));
+  caja.scrollTop = 0;
+}
+
 function modoEspiritualidad(modo) {
   for (const n of [$("#view-espiritualidad"), $("#esp-seg")]) n.dataset.modo = modo;
   for (const b of $("#esp-seg").querySelectorAll("button")) b.setAttribute("aria-pressed", String(b.dataset.modo === modo));
@@ -575,6 +599,7 @@ document.addEventListener("DOMContentLoaded", () => {
   addEventListener("resize", () => requestAnimationFrame(ajustarHabitos));
   for (const b of $("#esp-seg").querySelectorAll("button")) b.addEventListener("click", () => { modoEspiritualidad(b.dataset.modo); scrollTo(0, 0); });
   modoEspiritualidad("evangelio");
+  for (const b of document.querySelectorAll("[data-hora]")) b.addEventListener("click", () => abrirHora(b));
   for (const b of [$("#hab-ver-todos"), $("#rachas-mas")]) b.addEventListener("click", () => mostrar("todos"));
   $("#hab-nuevo").addEventListener("click", () => calendario.abrirHoja({ tipo: "habito" }));
   calendario = iniciarCalendario({

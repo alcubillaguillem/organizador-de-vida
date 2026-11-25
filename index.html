@@ -88,11 +88,11 @@
         <section id="horas" class="card">
           <div class="card-head"><h2>Liturgia de las Horas</h2><span class="small muted">iBreviary</span></div>
           <div class="horas">
-            <a class="pildora" href="https://www.ibreviary.com/m2/breviario.php?lang=es&amp;s=ufficio_delle_letture" target="_blank" rel="noopener noreferrer">Oficio</a>
-            <a class="pildora" href="https://www.ibreviary.com/m2/breviario.php?lang=es&amp;s=lodi" target="_blank" rel="noopener noreferrer">Laudes</a>
-            <a class="pildora" href="https://www.ibreviary.com/m2/breviario.php?lang=es&amp;s=ora_media" target="_blank" rel="noopener noreferrer">Intermedia</a>
-            <a class="pildora" href="https://www.ibreviary.com/m2/breviario.php?lang=es&amp;s=vespri" target="_blank" rel="noopener noreferrer">Vísperas</a>
-            <a class="pildora" href="https://www.ibreviary.com/m2/breviario.php?lang=es&amp;s=compieta" target="_blank" rel="noopener noreferrer">Completas</a>
+            <button type="button" class="pildora" data-hora="ufficio_delle_letture">Oficio</button>
+            <button type="button" class="pildora" data-hora="lodi">Laudes</button>
+            <button type="button" class="pildora" data-hora="ora_media">Intermedia</button>
+            <button type="button" class="pildora" data-hora="vespri">Vísperas</button>
+            <button type="button" class="pildora" data-hora="compieta">Completas</button>
           </div>
         </section>
         <div id="esp-seg" class="seg2" role="group" aria-label="Sección" data-modo="evangelio">
@@ -113,6 +113,11 @@
             <div id="ros-texto"></div>
           </section>
         </div>
+      </section>
+
+      <section id="view-hora" class="view narrow hidden" aria-label="Liturgia de las Horas">
+        <header class="view-head"><div><button type="button" class="link volver" data-view="espiritualidad">‹ Espiritualidad</button><h1 id="hora-titulo" class="title"></h1><div class="small muted">Liturgia de las Horas · iBreviary</div></div></header>
+        <section id="hora-texto" class="card hora" aria-live="polite"></section>
       </section>
 
       <section id="view-habitos" class="view hidden" aria-label="Hábitos">
