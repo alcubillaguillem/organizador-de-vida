@@ -479,6 +479,11 @@ html.cal-abierto, html.cal-abierto body { overflow: hidden; overscroll-behavior:
   #esp-seg { display: none; }
   #view-espiritualidad > #horas { flex: 0 0 auto; }
 }
+.hora p { margin: 0 0 14px; line-height: 1.65; white-space: pre-line; }
+.hora h3 { margin: 22px 0 8px; font-size: 13px; letter-spacing: .06em; color: var(--accent); white-space: pre-line; }
+.hora h3:first-child { margin-top: 0; }
+.hora .rubrica { color: var(--accent); font-weight: 600; }
+.hora a { color: var(--accent); }
 .volver { margin-bottom: 6px; font-weight: 600; }
 #activar-avisos { margin: 0 0 12px; }
 #resumen { scroll-margin-top: 16px; }
