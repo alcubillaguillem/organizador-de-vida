@@ -185,7 +185,10 @@ function pintarLista(hoy) {
       el("span", { className: "hab-txt" },
         el("strong", { textContent: h.nombre }),
         el("small", { className: !esDiario(h) && hechosSemana(h.dias, hoy) >= h.meta ? "ok" : "", textContent: detalle(h, hoy) })));
-    info.addEventListener("click", () => calendario.abrirHoja({ tipo: "habito", habito: h }));
+    info.addEventListener("click", () => {
+      if (Date.now() < Number(info.dataset.ignorarHasta || 0)) return; // el clic al soltar tras mantener pulsado
+      calendario.abrirHoja({ tipo: "habito", habito: h });
+    });
     const dias = el("div", { className: "hab-dias" }, ...previos.map((d) => {
       const b = el("button", { type: "button", textContent: LETRAS[desdeClave(d).getDay()], disabled: d < h.creado, ariaLabel: `${h.nombre}, ${fechaCorta(d)}` });
       b.setAttribute("aria-pressed", String(h.dias.includes(d)));
@@ -198,9 +201,82 @@ function pintarLista(hoy) {
     check.addEventListener("click", () => { alternar(h, k, hoy); requestAnimationFrame(() => animarCheck(h.id)); });
     const li = el("li", { className: hecho ? "hab-fila hecho" : "hab-fila" }, info, dias, check);
     li.dataset.id = h.id;
+    mantenerPulsado(li, info, () => menuHabito(h, li, hoy));
     return li;
   }) : [el("li", { className: "empty", textContent: "Aún no tienes hábitos." })]));
 }
+// ---------- Menú al mantener pulsado (el mismo que en Gastos Erasmus) ----------
+/** Mantener pulsado el elemento (fuera de sus botones de marcar) llama a fn. En el PC, clic derecho. */
+function mantenerPulsado(nodo, info, fn) {
+  let timer = null, x0 = 0, y0 = 0;
+  const cancelar = () => { clearTimeout(timer); timer = null; nodo.classList.remove("pressing"); };
+  const abrir = () => { cancelar(); info.dataset.ignorarHasta = String(Date.now() + 600); fn(); };
+  nodo.addEventListener("pointerdown", (e) => {
+    if (e.button !== 0 || e.target.closest(".hab-check, .hab-dias")) return;
+    x0 = e.clientX; y0 = e.clientY;
+    nodo.classList.add("pressing");
+    timer = setTimeout(() => { navigator.vibrate?.(10); abrir(); }, 450);
+  });
+  nodo.addEventListener("pointermove", (e) => { if (timer && Math.hypot(e.clientX - x0, e.clientY - y0) > 8) cancelar(); });
+  for (const ev of ["pointerup", "pointercancel", "pointerleave"]) nodo.addEventListener(ev, () => { if (timer) cancelar(); });
+  nodo.addEventListener("contextmenu", (e) => { e.preventDefault(); abrir(); });
+}
+
+let menuAbierto = null;
+function cerrarMenu() {
+  const m = menuAbierto;
+  if (!m) return;
+  menuAbierto = null;
+  m.classList.remove("show");
+  setTimeout(() => m.remove(), 180);
+}
+const filaMenu = (texto, d, fn, clase = "") => {
+  const b = el("button", { type: "button", className: `ctx-row ${clase}`, role: "menuitem" }, el("span", { textContent: texto }), icono(d));
+  b.addEventListener("click", () => { cerrarMenu(); fn(); });
+  return b;
+};
+
+/** Estilo iPhone: una copia del elemento queda en su sitio y el menú aparece debajo (o encima). */
+function abrirMenu(nodo, filas) {
+  if (menuAbierto) return;
+  const rect = nodo.getBoundingClientRect();
+  const copia = nodo.cloneNode(true);
+  copia.classList.remove("pressing");
+  const preview = el("div", { className: "ctx-preview", ariaHidden: "true" }, copia);
+  const menu = el("div", { className: "ctx-menu", role: "menu" }, ...filas);
+  const capa = el("div", { className: "ctx-layer" }, preview, menu);
+  document.body.append(capa);
+  menuAbierto = capa;
+  const margen = 12, hueco = 8, alto = innerHeight, hMenu = menu.offsetHeight;
+  let top = rect.top;
+  const debajo = top + rect.height + hueco + hMenu <= alto - margen, encima = top - hueco - hMenu >= margen;
+  if (!debajo && !encima) top = Math.max(margen, alto - margen - hMenu - hueco - rect.height);
+  for (const [k, v] of [["left", `${rect.left}px`], ["width", `${rect.width}px`], ["top", `${top}px`]]) preview.style.setProperty(k, v);
+  menu.style.setProperty("top", `${debajo || !encima ? top + rect.height + hueco : top - hueco - hMenu}px`);
+  menu.style.setProperty("right", `${Math.max(margen, innerWidth - rect.right)}px`);
+  menu.classList.toggle("arriba", !debajo && encima);
+  capa.addEventListener("click", (e) => { if (!e.target.closest(".ctx-menu")) cerrarMenu(); });
+  requestAnimationFrame(() => capa.classList.add("show"));
+}
+
+function menuHabito(h, li, hoy) {
+  const ayer = clave(sumarDias(hoy, -1)), hechoAyer = h.dias.includes(ayer);
+  const filas = [];
+  if (ayer >= h.creado) {
+    filas.push(filaMenu(hechoAyer ? "Desmarcar ayer" : "Hecho ayer", hechoAyer ? "M6 6l12 12M18 6 6 18" : CHECK, () => {
+      alternar(h, ayer, hoy);
+      aviso(hechoAyer ? `${h.nombre}: ayer desmarcado` : `${h.nombre}: ayer marcado ✓`);
+    }, hechoAyer ? "" : "active"));
+  }
+  filas.push(
+    filaMenu("Editar", "M4 20h4L19 9l-4-4L4 16v4zM14 6l4 4", () => calendario.abrirHoja({ tipo: "habito", habito: h })),
+    filaMenu("Eliminar", "M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3", () => {
+      if (confirm(`¿Borrar «${h.nombre}» y todo su historial?`)) { borrarHabito(h); aviso("Hábito borrado"); }
+    }, "danger"),
+    el("div", { className: "ctx-info", textContent: "Para otros días, toca las letras de debajo del nombre." }));
+  abrirMenu(li, filas);
+}
+
 const animarCheck = (id) => {
   const b = document.querySelector(`#lista [data-id="${CSS.escape(id)}"] .hab-check`);
   if (!b || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
